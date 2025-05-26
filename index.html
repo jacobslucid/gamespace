@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Dash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Exo 2', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            height: 100vh;
+            color: white;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .character {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .character-trail {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            opacity: 0.7;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        .obstacle {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #ef4444;
+            border-radius: 5px;
+            transform: translate(-50%, -50%);
+        }
+        
+        .token {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background-color: #eab308;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #eab308;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .character-option {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .character-option:hover {
+            transform: scale(1.05);
+        }
+        
+        .character-option.selected {
+            border: 3px solid #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        
+        .home-btn:hover {
+            opacity: 1;
+        }
+        
+        .upgrade-item {
+            transition: all 0.3s ease;
+        }
+        
+        .upgrade-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .game-over-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s forwards;
+        }
+        
+        .slide-out {
+            animation: slideOut 0.3s forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); }
+            to { transform: translateX(100%); }
+        }
+        
+        .milestone {
+            transition: all 0.3s ease;
+        }
+        
+        .milestone:hover {
+            transform: scale(1.03);
+        }
+        
+        .milestone.unlocked {
+            border: 2px solid #10b981;
+        }
+        
+        .milestone.locked {
+            opacity: 0.7;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+            transition: width 0.5s ease;
+        }
+        
+        .invincible {
+            animation: invincible 1s infinite;
+        }
+        
+        @keyframes invincible {
+            0% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+            50% { box-shadow: 0 0 40px rgba(255, 255, 255, 0.8); }
+            100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+        }
+        
+        .scrollable-content {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+        
+        .scrollable-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollable-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Home Button -->
+        <button class="home-btn bg-white bg-opacity-20 p-3 rounded-full" onclick="showStartScreen()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        </button>
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center z-50 bg-gradient-to-br from-indigo-900 to-purple-900">
+            <h1 class="text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">COSMIC DASH</h1>
+            
+            <div class="mb-6">
+                <h2 class="text-2xl font-semibold mb-4 text-center">Choose Your Character</h2>
+                <div class="flex space-x-6">
+                    <div class="character-option flex flex-col items-center p-4 bg-white bg-opacity-10 rounded-lg" data-color="#3b82f6" onclick="selectCharacter(this, '#3b82f6')">
+                        <div class="w-16 h-16 rounded-full bg-blue-500 mb-2"></div>
+                        <span>Blue</span>
+                    </div>
+                    <div class="character-option flex flex-col items-center p-4 bg-white bg-opacity-10 rounded-lg" data-color="#10b981" onclick="selectCharacter(this, '#10b981')">
+                        <div class="w-16 h-16 rounded-full bg-emerald-500 mb-2"></div>
+                        <span>Green</span>
+                    </div>
+                    <div class="character-option flex flex-col items-center p-4 bg-white bg-opacity-10 rounded-lg" data-color="#8b5cf6" onclick="selectCharacter(this, '#8b5cf6')">
+                        <div class="w-16 h-16 rounded-full bg-violet-500 mb-2"></div>
+                        <span>Purple</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-center space-x-4 mb-6">
+                <div class="token-display flex items-center bg-white bg-opacity-10 px-6 py-3 rounded-full">
+                    <div class="w-6 h-6 bg-yellow-400 rounded-full mr-3"></div>
+                    <span id="token-count" class="text-xl font-bold">0</span>
+                </div>
+                
+                <button onclick="toggleUpgradeShop()" class="btn bg-white bg-opacity-20 px-6 py-3 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    Upgrades
+                </button>
+                
+                <button onclick="toggleMilestones()" class="btn bg-white bg-opacity-20 px-6 py-3 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    Milestones
+                </button>
+            </div>
+            
+            <!-- Progress to 1 Million -->
+            <div class="w-full max-w-md mb-6 px-4">
+                <div class="flex justify-between text-sm mb-1">
+                    <span>0</span>
+                    <span>Progress to 1 Million</span>
+                    <span>1M</span>
+                </div>
+                <div class="w-full bg-white bg-opacity-10 rounded-full h-2.5">
+                    <div id="million-progress" class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <button id="start-button" class="btn bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-full text-xl font-bold shadow-lg">START GAME</button>
+        </div>
+        
+        <!-- Upgrade Shop -->
+        <div id="upgrade-shop" class="absolute inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-gradient-to-bl from-indigo-900 to-purple-900 z-50 p-8 transform translate-x-full">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold">Upgrade Shop</h2>
+                <button onclick="toggleUpgradeShop()" class="bg-white bg-opacity-20 p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="token-display flex items-center mb-6 bg-white bg-opacity-10 px-6 py-3 rounded-full inline-block">
+                <div class="w-6 h-6 bg-yellow-400 rounded-full mr-3"></div>
+                <span id="shop-token-count" class="text-xl font-bold">0</span>
+            </div>
+            
+            <div class="scrollable-content pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="upgrade-item bg-white bg-opacity-10 p-6 rounded-lg flex flex-col">
+                        <div class="flex items-center mb-4">
+                            <div class="text-4xl mr-4">⚡</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Speed Boost</h3>
+                                <p class="text-gray-300">Move faster (+20% per level)</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center">
+                            <div>
+                                <span class="text-sm text-gray-300">Level: </span>
+                                <span id="speed-level" class="font-bold">0</span>
+                            </div>
+                            <button onclick="purchaseUpgrade('speed', 60)" class="bg-yellow-500 text-yellow-900 px-4 py-2 rounded-full font-bold flex items-center">
+                                <span>60</span>
+                                <div class="w-4 h-4 bg-yellow-300 rounded-full ml-1"></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="upgrade-item bg-white bg-opacity-10 p-6 rounded-lg flex flex-col">
+                        <div class="flex items-center mb-4">
+                            <div class="text-4xl mr-4">🧲</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Token Magnet</h3>
+                                <p class="text-gray-300">Attract tokens (+50px range)</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center">
+                            <div>
+                                <span class="text-sm text-gray-300">Level: </span>
+                                <span id="magnet-level" class="font-bold">0</span>
+                            </div>
+                            <button onclick="purchaseUpgrade('magnet', 65)" class="bg-yellow-500 text-yellow-900 px-4 py-2 rounded-full font-bold flex items-center">
+                                <span>65</span>
+                                <div class="w-4 h-4 bg-yellow-300 rounded-full ml-1"></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="upgrade-item bg-white bg-opacity-10 p-6 rounded-lg flex flex-col">
+                        <div class="flex items-center mb-4">
+                            <div class="text-4xl mr-4">🛡️</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Shield</h3>
+                                <p class="text-gray-300">Free hits (+1 per level)</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center">
+                            <div>
+                                <span class="text-sm text-gray-300">Level: </span>
+                                <span id="shield-level" class="font-bold">0</span>
+                            </div>
+                            <button onclick="purchaseUpgrade('shield', 70)" class="bg-yellow-500 text-yellow-900 px-4 py-2 rounded-full font-bold flex items-center">
+                                <span>70</span>
+                                <div class="w-4 h-4 bg-yellow-300 rounded-full ml-1"></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="upgrade-item bg-white bg-opacity-10 p-6 rounded-lg flex flex-col">
+                        <div class="flex items-center mb-4">
+                            <div class="text-4xl mr-4">✨</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Token Multiplier</h3>
+                                <p class="text-gray-300">×2 per level (×2, ×4, ×8...)</p>
+                                <p id="multiplier-max-note" class="text-xs text-yellow-300 hidden">Max level reached (5000× limit)</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto flex justify-between items-center">
+                            <div>
+                                <span class="text-sm text-gray-300">Level: </span>
+                                <span id="doubleTokens-level" class="font-bold">0</span>
+                            </div>
+                            <button id="doubleTokens-button" onclick="purchaseUpgrade('doubleTokens', 75)" class="bg-yellow-500 text-yellow-900 px-4 py-2 rounded-full font-bold flex items-center">
+                                <span>75</span>
+                                <div class="w-4 h-4 bg-yellow-300 rounded-full ml-1"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Milestones Panel -->
+        <div id="milestones-panel" class="absolute inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-gradient-to-bl from-indigo-900 to-purple-900 z-50 p-8 transform translate-x-full overflow-y-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold">Milestones</h2>
+                <button onclick="toggleMilestones()" class="bg-white bg-opacity-20 p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="token-display flex items-center mb-6 bg-white bg-opacity-10 px-6 py-3 rounded-full inline-block">
+                <div class="w-6 h-6 bg-yellow-400 rounded-full mr-3"></div>
+                <span id="milestone-token-count" class="text-xl font-bold">0</span>
+            </div>
+            
+            <div class="space-y-6">
+                <div id="milestone-1000" class="milestone bg-white bg-opacity-10 p-6 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="text-4xl mr-4">✨</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Cosmic Trail</h3>
+                                <p class="text-gray-300">Leave a trail of stardust behind you</p>
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold">1,000 🪙</div>
+                    </div>
+                    <div class="w-full bg-white bg-opacity-10 rounded-full h-2.5">
+                        <div id="milestone-1000-progress" class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="milestone-10000" class="milestone bg-white bg-opacity-10 p-6 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="text-4xl mr-4">🌟</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Auto-Collect</h3>
+                                <p class="text-gray-300">Automatically collect nearby tokens</p>
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold">10,000 🪙</div>
+                    </div>
+                    <div class="w-full bg-white bg-opacity-10 rounded-full h-2.5">
+                        <div id="milestone-10000-progress" class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="milestone-100000" class="milestone bg-white bg-opacity-10 p-6 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="text-4xl mr-4">🌌</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Galactic Trip</h3>
+                                <p class="text-gray-300">Control two balls at once</p>
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold">100,000 🪙</div>
+                    </div>
+                    <div class="w-full bg-white bg-opacity-10 rounded-full h-2.5">
+                        <div id="milestone-100000-progress" class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="milestone-1000000" class="milestone bg-white bg-opacity-10 p-6 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="text-4xl mr-4">👑</div>
+                            <div>
+                                <h3 class="font-semibold text-xl">Ultimate Cosmic Power</h3>
+                                <p class="text-gray-300">Invincibility + massive token multiplier</p>
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold">1,000,000 🪙</div>
+                    </div>
+                    <div class="w-full bg-white bg-opacity-10 rounded-full h-2.5">
+                        <div id="milestone-1000000-progress" class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="absolute inset-0 flex flex-col items-center justify-center z-50 game-over-overlay hidden">
+            <div class="bg-white bg-opacity-10 p-8 rounded-xl backdrop-blur-sm max-w-md w-full">
+                <h2 class="text-4xl font-bold mb-4 text-center">Game Over</h2>
+                <p class="text-xl mb-2 text-center">Score: <span id="final-score">0</span></p>
+                <p class="text-xl mb-6 text-center">Tokens collected: <span id="tokens-collected">0</span></p>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="restartGame()" class="btn bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-full font-bold">Play Again</button>
+                    <button onclick="showStartScreen()" class="btn bg-white bg-opacity-20 text-white px-6 py-2 rounded-full font-bold">Main Menu</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game UI -->
+        <div id="game-ui" class="absolute top-0 right-0 p-4 flex flex-col items-end z-10 hidden">
+            <div class="bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-full mb-2">
+                <span class="font-bold">Score: </span>
+                <span id="score">0</span>
+            </div>
+            <div class="bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-full flex items-center">
+                <div class="w-4 h-4 bg-yellow-400 rounded-full mr-2"></div>
+                <span id="game-tokens">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let gameActive = false;
+        let character;
+        let secondCharacter; // For Galactic Trip milestone
+        let characterColor = '#3b82f6'; // Default blue
+        let obstacles = [];
+        let tokens = [];
+        let trails = [];
+        let score = 0;
+        let tokenCount = 0;
+        let gameTokens = 0;
+        let gameInterval;
+        let obstacleInterval;
+        let tokenInterval;
+        let trailInterval;
+        let mouseX = 0;
+        let mouseY = 0;
+        let upgrades = {
+            speed: 0,
+            magnet: 0,
+            shield: 0,
+            doubleTokens: 0
+        };
+        let milestones = {
+            cosmicTrail: false,
+            autoCollect: false,
+            galacticTrip: false,
+            ultimatePower: false
+        };
+        let shopOpen = false;
+        let milestonesOpen = false;
+        
+        // Token multiplier cap - level 12 gives 2^12 = 4096 multiplier (under 5000 limit)
+        const TOKEN_MULTIPLIER_MAX_LEVEL = 12;
+        
+        // Milestone thresholds
+        const MILESTONE_THRESHOLDS = {
+            cosmicTrail: 1000,
+            autoCollect: 10000,
+            galacticTrip: 100000,
+            ultimatePower: 1000000
+        };
+        
+        // DOM elements
+        const startScreen = document.getElementById('start-screen');
+        const upgradeShop = document.getElementById('upgrade-shop');
+        const milestonesPanel = document.getElementById('milestones-panel');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const gameUI = document.getElementById('game-ui');
+        const startButton = document.getElementById('start-button');
+        const scoreElement = document.getElementById('score');
+        const gameTokensElement = document.getElementById('game-tokens');
+        const tokenCountElement = document.getElementById('token-count');
+        const shopTokenCountElement = document.getElementById('shop-token-count');
+        const milestoneTokenCountElement = document.getElementById('milestone-token-count');
+        const finalScoreElement = document.getElementById('final-score');
+        const tokensCollectedElement = document.getElementById('tokens-collected');
+        const gameContainer = document.querySelector('.game-container');
+        const millionProgressBar = document.getElementById('million-progress');
+        const multiplierMaxNote = document.getElementById('multiplier-max-note');
+        const doubleTokensButton = document.getElementById('doubleTokens-button');
+        
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load saved tokens and upgrades from localStorage
+            loadGameData();
+            
+            // Set up event listeners
+            startButton.addEventListener('click', startGame);
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+            
+            // For touch devices
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }, { passive: false });
+            
+            // Select the first character by default
+            selectCharacter(document.querySelector('.character-option'), '#3b82f6');
+            
+            // Update UI
+            updateTokenDisplay();
+            updateUpgradeLevels();
+            updateMilestoneProgress();
+            updateMillionProgress();
+            checkTokenMultiplierCap();
+        });
+        
+        function loadGameData() {
+            // Load tokens
+            const savedTokens = localStorage.getItem('cosmicDashTokens');
+            if (savedTokens) {
+                tokenCount = parseInt(savedTokens);
+            }
+            
+            // Load upgrades
+            const savedUpgrades = localStorage.getItem('cosmicDashUpgrades');
+            if (savedUpgrades) {
+                upgrades = JSON.parse(savedUpgrades);
+                
+                // Ensure token multiplier doesn't exceed cap
+                if (upgrades.doubleTokens > TOKEN_MULTIPLIER_MAX_LEVEL) {
+                    upgrades.doubleTokens = TOKEN_MULTIPLIER_MAX_LEVEL;
+                }
+            }
+            
+            // Load milestones
+            const savedMilestones = localStorage.getItem('cosmicDashMilestones');
+            if (savedMilestones) {
+                milestones = JSON.parse(savedMilestones);
+                
+                // Handle the renamed milestone (obstacleSlowdown -> galacticTrip)
+                if (savedMilestones.includes('obstacleSlowdown')) {
+                    milestones.galacticTrip = true;
+                }
+            } else {
+                // Check if milestones should be unlocked based on token count
+                checkMilestones();
+            }
+        }
+        
+        function saveGameData() {
+            localStorage.setItem('cosmicDashTokens', tokenCount.toString());
+            localStorage.setItem('cosmicDashUpgrades', JSON.stringify(upgrades));
+            localStorage.setItem('cosmicDashMilestones', JSON.stringify(milestones));
+        }
+        
+        function checkMilestones() {
+            if (tokenCount >= MILESTONE_THRESHOLDS.cosmicTrail) {
+                milestones.cosmicTrail = true;
+            }
+            if (tokenCount >= MILESTONE_THRESHOLDS.autoCollect) {
+                milestones.autoCollect = true;
+            }
+            if (tokenCount >= MILESTONE_THRESHOLDS.galacticTrip) {
+                milestones.galacticTrip = true;
+            }
+            if (tokenCount >= MILESTONE_THRESHOLDS.ultimatePower) {
+                milestones.ultimatePower = true;
+            }
+        }
+        
+        function updateMilestoneProgress() {
+            // Update milestone UI
+            const milestones = [
+                { id: 'milestone-1000', threshold: 1000, unlocked: tokenCount >= 1000 },
+                { id: 'milestone-10000', threshold: 10000, unlocked: tokenCount >= 10000 },
+                { id: 'milestone-100000', threshold: 100000, unlocked: tokenCount >= 100000 },
+                { id: 'milestone-1000000', threshold: 1000000, unlocked: tokenCount >= 1000000 }
+            ];
+            
+            milestones.forEach(milestone => {
+                const element = document.getElementById(milestone.id);
+                const progressBar = document.getElementById(`${milestone.id}-progress`);
+                
+                if (milestone.unlocked) {
+                    element.classList.add('unlocked');
+                    element.classList.remove('locked');
+                    progressBar.style.width = '100%';
+                } else {
+                    element.classList.add('locked');
+                    element.classList.remove('unlocked');
+                    const progress = Math.min(100, (tokenCount / milestone.threshold) * 100);
+                    progressBar.style.width = `${progress}%`;
+                }
+            });
+        }
+        
+        function updateMillionProgress() {
+            const progress = Math.min(100, (tokenCount / 1000000) * 100);
+            millionProgressBar.style.width = `${progress}%`;
+        }
+        
+        function selectCharacter(element, color) {
+            // Remove selected class from all options
+            document.querySelectorAll('.character-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked option
+            element.classList.add('selected');
+            characterColor = color;
+        }
+        
+        function toggleUpgradeShop() {
+            if (shopOpen) {
+                // Close shop
+                upgradeShop.classList.remove('slide-in');
+                upgradeShop.classList.add('slide-out');
+                setTimeout(() => {
+                    upgradeShop.style.transform = 'translateX(100%)';
+                }, 300);
+            } else {
+                // Close milestones if open
+                if (milestonesOpen) {
+                    toggleMilestones();
+                }
+                
+                // Open shop
+                updateShopTokenDisplay();
+                upgradeShop.classList.remove('slide-out');
+                upgradeShop.classList.add('slide-in');
+                upgradeShop.style.transform = 'translateX(0)';
+            }
+            shopOpen = !shopOpen;
+        }
+        
+        function toggleMilestones() {
+            if (milestonesOpen) {
+                // Close milestones
+                milestonesPanel.classList.remove('slide-in');
+                milestonesPanel.classList.add('slide-out');
+                setTimeout(() => {
+                    milestonesPanel.style.transform = 'translateX(100%)';
+                }, 300);
+            } else {
+                // Close shop if open
+                if (shopOpen) {
+                    toggleUpgradeShop();
+                }
+                
+                // Open milestones
+                updateMilestoneTokenDisplay();
+                milestonesPanel.classList.remove('slide-out');
+                milestonesPanel.classList.add('slide-in');
+                milestonesPanel.style.transform = 'translateX(0)';
+            }
+            milestonesOpen = !milestonesOpen;
+        }
+        
+        function startGame() {
+            // Hide start screen and show game UI
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            gameUI.classList.remove('hidden');
+            
+            // Close panels if open
+            if (shopOpen) {
+                toggleUpgradeShop();
+            }
+            if (milestonesOpen) {
+                toggleMilestones();
+            }
+            
+            // Reset game variables
+            gameActive = true;
+            obstacles = [];
+            tokens = [];
+            trails = [];
+            score = 0;
+            gameTokens = 0;
+            updateScore();
+            updateGameTokens();
+            
+            // Create character
+            createCharacter();
+            
+            // Create second character if Galactic Trip milestone is unlocked
+            if (milestones.galacticTrip) {
+                createSecondCharacter();
+            }
+            
+            // Start game loops
+            gameInterval = setInterval(updateGame, 20);
+            obstacleInterval = setInterval(createObstacle, 1500);
+            tokenInterval = setInterval(createToken, 2000);
+            
+            // Start trail effect if milestone unlocked
+            if (milestones.cosmicTrail) {
+                trailInterval = setInterval(createTrail, 100);
+            }
+        }
+        
+        function createCharacter() {
+            // Remove existing character if any
+            if (character) {
+                character.remove();
+            }
+            
+            // Create new character
+            character = document.createElement('div');
+            character.className = 'character';
+            character.style.backgroundColor = characterColor;
+            character.style.boxShadow = `0 0 15px ${characterColor}`;
+            character.style.left = '50%';
+            character.style.top = '75%';
+            
+            // Add ultimate power effect if milestone unlocked
+            if (milestones.ultimatePower) {
+                character.classList.add('invincible');
+            }
+            
+            gameContainer.appendChild(character);
+            
+            // Add shield if purchased
+            if (upgrades.shield > 0) {
+                character.style.border = `${upgrades.shield * 2}px solid white`;
+            }
+        }
+        
+        function createSecondCharacter() {
+            // Create second character for Galactic Trip milestone
+            secondCharacter = document.createElement('div');
+            secondCharacter.className = 'character';
+            secondCharacter.style.backgroundColor = characterColor;
+            secondCharacter.style.opacity = '0.8';
+            secondCharacter.style.boxShadow = `0 0 15px ${characterColor}`;
+            secondCharacter.style.left = '50%';
+            secondCharacter.style.top = '75%';
+            
+            // Add ultimate power effect if milestone unlocked
+            if (milestones.ultimatePower) {
+                secondCharacter.classList.add('invincible');
+            }
+            
+            gameContainer.appendChild(secondCharacter);
+            
+            // Add shield if purchased
+            if (upgrades.shield > 0) {
+                secondCharacter.style.border = `${upgrades.shield * 2}px solid white`;
+            }
+        }
+        
+        function createTrail() {
+            if (!gameActive || !milestones.cosmicTrail) return;
+            
+            // Create trail for main character
+            if (character) {
+                const trail = document.createElement('div');
+                trail.className = 'character-trail';
+                trail.style.backgroundColor = characterColor;
+                trail.style.opacity = '0.7';
+                
+                const characterX = parseFloat(character.style.left) || window.innerWidth / 2;
+                const characterY = parseFloat(character.style.top) || window.innerHeight * 0.75;
+                
+                trail.style.left = `${characterX}px`;
+                trail.style.top = `${characterY}px`;
+                
+                gameContainer.appendChild(trail);
+                
+                trails.push({
+                    element: trail,
+                    opacity: 0.7,
+                    x: characterX,
+                    y: characterY
+                });
+            }
+            
+            // Create trail for second character if it exists
+            if (secondCharacter && milestones.galacticTrip) {
+                const trail = document.createElement('div');
+                trail.className = 'character-trail';
+                trail.style.backgroundColor = characterColor;
+                trail.style.opacity = '0.5';
+                
+                const characterX = parseFloat(secondCharacter.style.left) || window.innerWidth / 2;
+                const characterY = parseFloat(secondCharacter.style.top) || window.innerHeight * 0.75;
+                
+                trail.style.left = `${characterX}px`;
+                trail.style.top = `${characterY}px`;
+                
+                gameContainer.appendChild(trail);
+                
+                trails.push({
+                    element: trail,
+                    opacity: 0.5,
+                    x: characterX,
+                    y: characterY
+                });
+            }
+            
+            // Limit number of trails
+            while (trails.length > 15) {
+                const oldestTrail = trails.shift();
+                oldestTrail.element.remove();
+            }
+        }
+        
+        function createObstacle() {
+            if (!gameActive) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            // Random position at the top
+            const posX = Math.random() * window.innerWidth;
+            obstacle.style.left = `${posX}px`;
+            obstacle.style.top = '0';
+            
+            gameContainer.appendChild(obstacle);
+            
+            obstacles.push({
+                element: obstacle,
+                x: posX,
+                y: 0,
+                speed: 3 + Math.random() * 2
+            });
+        }
+        
+        function createToken() {
+            if (!gameActive) return;
+            
+            const token = document.createElement('div');
+            token.className = 'token';
+            
+            // Random position at the top
+            const posX = Math.random() * window.innerWidth;
+            token.style.left = `${posX}px`;
+            token.style.top = '0';
+            
+            gameContainer.appendChild(token);
+            tokens.push({
+                element: token,
+                x: posX,
+                y: 0,
+                speed: 2 + Math.random()
+            });
+        }
+        
+        function updateGame() {
+            if (!gameActive) return;
+            
+            // Update character position
+            const characterSpeed = 0.1 + (upgrades.speed * 0.02);
+            const characterX = parseFloat(character.style.left) || window.innerWidth / 2;
+            const characterY = parseFloat(character.style.top) || window.innerHeight * 0.75;
+            
+            const newX = characterX + (mouseX - characterX) * characterSpeed;
+            const newY = characterY + (mouseY - characterY) * characterSpeed;
+            
+            character.style.left = `${newX}px`;
+            character.style.top = `${newY}px`;
+            
+            // Update second character position if Galactic Trip milestone is unlocked
+            if (secondCharacter && milestones.galacticTrip) {
+                // Second character follows with a delay and offset
+                const secondX = parseFloat(secondCharacter.style.left) || window.innerWidth / 2;
+                const secondY = parseFloat(secondCharacter.style.top) || window.innerHeight * 0.75;
+                
+                // Calculate offset position (mirror position around mouse)
+                const offsetX = mouseX + (mouseX - newX);
+                const offsetY = mouseY + (mouseY - newY);
+                
+                const newSecondX = secondX + (offsetX - secondX) * characterSpeed;
+                const newSecondY = secondY + (offsetY - secondY) * characterSpeed;
+                
+                secondCharacter.style.left = `${newSecondX}px`;
+                secondCharacter.style.top = `${newSecondY}px`;
+            }
+            
+            // Update trails
+            trails.forEach((trail, index) => {
+                trail.opacity -= 0.02;
+                trail.element.style.opacity = trail.opacity.toString();
+                
+                if (trail.opacity <= 0) {
+                    trail.element.remove();
+                    trails.splice(index, 1);
+                }
+            });
+            
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                obstacle.y += obstacle.speed;
+                obstacle.element.style.top = `${obstacle.y}px`;
+                
+                // Check collision with main character
+                const distance = Math.hypot(newX - obstacle.x, newY - obstacle.y);
+                if (distance < 40) {
+                    // Ultimate power makes you invincible
+                    if (milestones.ultimatePower) {
+                        obstacle.element.remove();
+                        obstacles.splice(i, 1);
+                        score += 2;
+                        updateScore();
+                    }
+                    // Use shield if available
+                    else if (upgrades.shield > 0) {
+                        upgrades.shield--;
+                        if (upgrades.shield > 0) {
+                            character.style.border = `${upgrades.shield * 2}px solid white`;
+                            if (secondCharacter) {
+                                secondCharacter.style.border = `${upgrades.shield * 2}px solid white`;
+                            }
+                        } else {
+                            character.style.border = '';
+                            if (secondCharacter) {
+                                secondCharacter.style.border = '';
+                            }
+                        }
+                        obstacle.element.remove();
+                        obstacles.splice(i, 1);
+                        saveGameData();
+                    } else {
+                        gameOver();
+                        return;
+                    }
+                }
+                
+                // Check collision with second character if it exists
+                if (secondCharacter && milestones.galacticTrip) {
+                    const secondX = parseFloat(secondCharacter.style.left);
+                    const secondY = parseFloat(secondCharacter.style.top);
+                    const secondDistance = Math.hypot(secondX - obstacle.x, secondY - obstacle.y);
+                    
+                    if (secondDistance < 40) {
+                        // Ultimate power makes you invincible
+                        if (milestones.ultimatePower) {
+                            obstacle.element.remove();
+                            obstacles.splice(i, 1);
+                            score += 2;
+                            updateScore();
+                        }
+                        // Use shield if available
+                        else if (upgrades.shield > 0) {
+                            upgrades.shield--;
+                            if (upgrades.shield > 0) {
+                                character.style.border = `${upgrades.shield * 2}px solid white`;
+                                secondCharacter.style.border = `${upgrades.shield * 2}px solid white`;
+                            } else {
+                                character.style.border = '';
+                                secondCharacter.style.border = '';
+                            }
+                            obstacle.element.remove();
+                            obstacles.splice(i, 1);
+                            saveGameData();
+                        } else {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+                
+                // Remove if out of screen
+                if (obstacle.y > window.innerHeight) {
+                    obstacle.element.remove();
+                    obstacles.splice(i, 1);
+                    score += 1;
+                    updateScore();
+                }
+            }
+            
+            // Update tokens
+            // Calculate magnet range based on level (stacking effect)
+            const magnetRange = upgrades.magnet > 0 ? 100 + (upgrades.magnet * 50) : 0;
+            
+            // Calculate auto-collect range if milestone unlocked
+            const autoCollectRange = milestones.autoCollect ? 150 : 0;
+            
+            for (let i = tokens.length - 1; i >= 0; i--) {
+                const token = tokens[i];
+                token.y += token.speed;
+                
+                // Apply magnet effect if upgrade is active
+                if (magnetRange > 0) {
+                    const distToCharacter = Math.hypot(newX - token.x, newY - token.y);
+                    if (distToCharacter < magnetRange) {
+                        // Move token towards character
+                        const angle = Math.atan2(newY - token.y, newX - token.x);
+                        token.x += Math.cos(angle) * (1 + upgrades.magnet);
+                        token.y += Math.sin(angle) * (1 + upgrades.magnet);
+                    }
+                    
+                    // Also apply magnet effect for second character if it exists
+                    if (secondCharacter && milestones.galacticTrip) {
+                        const secondX = parseFloat(secondCharacter.style.left);
+                        const secondY = parseFloat(secondCharacter.style.top);
+                        const distToSecondCharacter = Math.hypot(secondX - token.x, secondY - token.y);
+                        
+                        if (distToSecondCharacter < magnetRange) {
+                            // Move token towards second character
+                            const angle = Math.atan2(secondY - token.y, secondX - token.x);
+                            token.x += Math.cos(angle) * (1 + upgrades.magnet);
+                            token.y += Math.sin(angle) * (1 + upgrades.magnet);
+                        }
+                    }
+                }
+                
+                // Apply auto-collect if milestone unlocked
+                if (autoCollectRange > 0) {
+                    const distToCharacter = Math.hypot(newX - token.x, newY - token.y);
+                    if (distToCharacter < autoCollectRange) {
+                        collectToken(token, i, newX, newY);
+                        continue;
+                    }
+                    
+                    // Also check auto-collect for second character
+                    if (secondCharacter && milestones.galacticTrip) {
+                        const secondX = parseFloat(secondCharacter.style.left);
+                        const secondY = parseFloat(secondCharacter.style.top);
+                        const distToSecondCharacter = Math.hypot(secondX - token.x, secondY - token.y);
+                        
+                        if (distToSecondCharacter < autoCollectRange) {
+                            collectToken(token, i, secondX, secondY);
+                            continue;
+                        }
+                    }
+                }
+                
+                token.element.style.left = `${token.x}px`;
+                token.element.style.top = `${token.y}px`;
+                
+                // Check collision with main character
+                const distance = Math.hypot(newX - token.x, newY - token.y);
+                if (distance < 40) {
+                    collectToken(token, i, newX, newY);
+                    continue;
+                }
+                
+                // Check collision with second character if it exists
+                if (secondCharacter && milestones.galacticTrip) {
+                    const secondX = parseFloat(secondCharacter.style.left);
+                    const secondY = parseFloat(secondCharacter.style.top);
+                    const secondDistance = Math.hypot(secondX - token.x, secondY - token.y);
+                    
+                    if (secondDistance < 40) {
+                        collectToken(token, i, secondX, secondY);
+                        continue;
+                    }
+                }
+                
+                // Remove if out of screen
+                if (token.y > window.innerHeight) {
+                    token.element.remove();
+                    tokens.splice(i, 1);
+                }
+            }
+        }
+        
+        function collectToken(token, index, x, y) {
+            // Remove token
+            token.element.remove();
+            tokens.splice(index, 1);
+            
+            // Calculate token value based on upgrades and milestones
+            let tokenValue = 1;
+            
+            // Apply token multiplier (stacking effect: 2^level)
+            if (upgrades.doubleTokens > 0) {
+                tokenValue *= Math.pow(2, upgrades.doubleTokens);
+            }
+            
+            // Apply ultimate power bonus
+            if (milestones.ultimatePower) {
+                tokenValue *= 10;
+            }
+            
+            gameTokens += tokenValue;
+            updateGameTokens();
+            
+            // Visual feedback
+            createTokenCollectionEffect(token.x, token.y, tokenValue);
+        }
+        
+        function createTokenCollectionEffect(x, y, value) {
+            const effect = document.createElement('div');
+            effect.className = 'absolute text-yellow-400 font-bold text-lg';
+            effect.style.left = `${x}px`;
+            effect.style.top = `${y}px`;
+            effect.textContent = `+${value}`;
+            effect.style.opacity = '1';
+            effect.style.transform = 'translateY(0)';
+            effect.style.transition = 'all 0.8s ease-out';
+            
+            gameContainer.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.style.opacity = '0';
+                effect.style.transform = 'translateY(-20px)';
+            }, 50);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 800);
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            clearInterval(obstacleInterval);
+            clearInterval(tokenInterval);
+            if (trailInterval) clearInterval(trailInterval);
+            
+            // Update total tokens
+            tokenCount += gameTokens;
+            updateTokenDisplay();
+            
+            // Check if new milestones unlocked
+            const previousMilestones = {...milestones};
+            checkMilestones();
+            
+            // Save game data
+            saveGameData();
+            
+            // Update milestone progress
+            updateMilestoneProgress();
+            updateMillionProgress();
+            
+            // Show game over screen
+            finalScoreElement.textContent = score;
+            tokensCollectedElement.textContent = gameTokens;
+            gameOverScreen.classList.remove('hidden');
+            
+            // Clean up game elements
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            tokens.forEach(token => token.element.remove());
+            trails.forEach(trail => trail.element.remove());
+            if (character) character.remove();
+            if (secondCharacter) secondCharacter.remove();
+            obstacles = [];
+            tokens = [];
+            trails = [];
+        }
+        
+        function restartGame() {
+            gameOverScreen.classList.add('hidden');
+            startGame();
+        }
+        
+        function showStartScreen() {
+            // Clean up game elements
+            if (character) character.remove();
+            if (secondCharacter) secondCharacter.remove();
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            tokens.forEach(token => token.element.remove());
+            trails.forEach(trail => trail.element.remove());
+            obstacles = [];
+            tokens = [];
+            trails = [];
+            
+            // Clear intervals
+            clearInterval(gameInterval);
+            clearInterval(obstacleInterval);
+            clearInterval(tokenInterval);
+            if (trailInterval) clearInterval(trailInterval);
+            
+            // Show start screen
+            gameOverScreen.classList.add('hidden');
+            gameUI.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            
+            // Update token display
+            updateTokenDisplay();
+            updateUpgradeLevels();
+            updateMilestoneProgress();
+            updateMillionProgress();
+            checkTokenMultiplierCap();
+            
+            // Reset game state
+            gameActive = false;
+        }
+        
+        function updateScore() {
+            scoreElement.textContent = score;
+        }
+        
+        function updateGameTokens() {
+            gameTokensElement.textContent = gameTokens;
+        }
+        
+        function updateTokenDisplay() {
+            tokenCountElement.textContent = tokenCount.toLocaleString();
+        }
+        
+        function updateShopTokenDisplay() {
+            shopTokenCountElement.textContent = tokenCount.toLocaleString();
+            checkTokenMultiplierCap();
+        }
+        
+        function updateMilestoneTokenDisplay() {
+            milestoneTokenCountElement.textContent = tokenCount.toLocaleString();
+        }
+        
+        function updateUpgradeLevels() {
+            document.getElementById('speed-level').textContent = upgrades.speed;
+            document.getElementById('magnet-level').textContent = upgrades.magnet;
+            document.getElementById('shield-level').textContent = upgrades.shield;
+            document.getElementById('doubleTokens-level').textContent = upgrades.doubleTokens;
+        }
+        
+        function checkTokenMultiplierCap() {
+            // Check if token multiplier has reached its cap
+            if (upgrades.doubleTokens >= TOKEN_MULTIPLIER_MAX_LEVEL) {
+                multiplierMaxNote.classList.remove('hidden');
+                doubleTokensButton.disabled = true;
+                doubleTokensButton.classList.add('opacity-50', 'cursor-not-allowed');
+                doubleTokensButton.classList.remove('hover:transform');
+            } else {
+                multiplierMaxNote.classList.add('hidden');
+                doubleTokensButton.disabled = false;
+                doubleTokensButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        function purchaseUpgrade(type, cost) {
+            // Check if token multiplier has reached its cap
+            if (type === 'doubleTokens' && upgrades.doubleTokens >= TOKEN_MULTIPLIER_MAX_LEVEL) {
+                // Visual feedback for max level reached
+                const upgradeItem = event.currentTarget.closest('.upgrade-item');
+                upgradeItem.classList.add('bg-yellow-900', 'bg-opacity-30');
+                setTimeout(() => {
+                    upgradeItem.classList.remove('bg-yellow-900', 'bg-opacity-30');
+                }, 300);
+                return;
+            }
+            
+            if (tokenCount >= cost) {
+                tokenCount -= cost;
+                upgrades[type]++;
+                updateTokenDisplay();
+                updateShopTokenDisplay();
+                updateUpgradeLevels();
+                saveGameData();
+                
+                // Check if token multiplier cap is reached after purchase
+                if (type === 'doubleTokens') {
+                    checkTokenMultiplierCap();
+                }
+                
+                // Visual feedback
+                const upgradeItem = event.currentTarget.closest('.upgrade-item');
+                upgradeItem.classList.add('bg-green-900', 'bg-opacity-30');
+                setTimeout(() => {
+                    upgradeItem.classList.remove('bg-green-900', 'bg-opacity-30');
+                }, 300);
+            } else {
+                // Visual feedback for not enough tokens
+                const upgradeItem = event.currentTarget.closest('.upgrade-item');
+                upgradeItem.classList.add('bg-red-900', 'bg-opacity-30');
+                setTimeout(() => {
+                    upgradeItem.classList.remove('bg-red-900', 'bg-opacity-30');
+                }, 300);
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'945e782a726c8fdb',t:'MTc0ODI3NTA1OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
