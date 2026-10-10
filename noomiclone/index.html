@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NoomiClone — Web Tribute</title>
+<style>
+  :root{
+    --ink:#eaf2f8; --dim:#9fb6c9; --accent:#ffb340; --accent2:#39d0d8;
+    --panel:rgba(10,22,34,.72); --btn:rgba(16,34,52,.78); --btn-on:rgba(255,179,64,.85);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0b1622}
+  body{font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink);
+       touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+  #game{position:fixed;inset:0;display:block;touch-action:none}
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
+       padding:calc(8px + env(safe-area-inset-top)) 12px 0;pointer-events:none;z-index:5}
+  .hudbox{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:12px;
+          padding:7px 12px;backdrop-filter:blur(6px);line-height:1.25}
+  #scoreBox{font-weight:700;font-size:19px;letter-spacing:.4px}
+  #scoreBox small{display:block;font-size:10.5px;font-weight:600;color:var(--dim);letter-spacing:1.4px;text-transform:uppercase}
+  #scoreBox .best{color:var(--accent);font-size:12px;font-weight:700}
+  #msgBox{text-align:center;font-weight:700;font-size:16px;color:var(--accent);min-height:22px;text-shadow:0 2px 10px rgba(0,0,0,.5);padding:0 8px}
+  #sysBtns{display:flex;gap:8px;pointer-events:auto}
+  .sysbtn{width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:var(--btn);
+          color:var(--ink);font-size:19px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .sysbtn.on{background:var(--btn-on);color:#221a08}
+  /* ---------- Touch controls ---------- */
+  #touch{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-between;align-items:flex-end;
+         padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+  .cluster{display:flex;gap:10px;align-items:flex-end;pointer-events:none}
+  .tbtn{pointer-events:auto;border:1.5px solid rgba(255,255,255,.16);background:var(--btn);color:var(--ink);
+        border-radius:18px;font-weight:800;letter-spacing:.6px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        cursor:pointer;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .tbtn .ic{font-size:24px;line-height:1}
+  .tbtn .lb{font-size:11px;margin-top:3px;color:var(--dim)}
+  .tbtn.held{background:var(--btn-on);color:#221a08;border-color:rgba(255,255,255,.5)}
+  .tbtn.held .lb{color:#5a4512}
+  .tbtn.big{width:104px;height:104px;border-radius:50%;background:rgba(214,64,64,.8);border-color:rgba(255,255,255,.3)}
+  .tbtn.big .lb{color:#ffd9d9}
+  .tbtn.big.held{background:rgba(255,92,92,.95)}
+  .tbtn.med{width:78px;height:78px}
+  .tbtn.sm{width:60px;height:60px}
+  @media (max-height:480px){ .tbtn.big{width:84px;height:84px} .tbtn.med{width:64px;height:64px} }
+  /* ---------- Help overlay ---------- */
+  #help{position:fixed;inset:0;z-index:10;background:rgba(5,12,20,.78);display:flex;align-items:center;justify-content:center;padding:18px}
+  #helpCard{background:#10222f;border:1px solid rgba(255,255,255,.1);border-radius:20px;max-width:520px;width:100%;
+            padding:24px 24px 18px;box-shadow:0 24px 60px rgba(0,0,0,.5);max-height:92vh;overflow:auto}
+  #helpCard h1{font-size:27px;letter-spacing:.3px}
+  #helpCard h1 span{color:var(--accent)}
+  #helpCard p.sub{color:var(--dim);margin:4px 0 14px;font-size:14px}
+  .ctl{display:flex;gap:10px;align-items:flex-start;margin:9px 0;font-size:14px;line-height:1.45}
+  .key{flex:0 0 auto;background:#1d3450;color:#fff;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;
+       border-radius:8px;padding:2px 9px;font-weight:700;font-size:12.5px;min-width:64px;text-align:center}
+  #playBtn{margin-top:16px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--accent);color:#221a08;
+           font-size:17px;font-weight:800;letter-spacing:.5px;cursor:pointer}
+  #helpCard .foot{margin-top:13px;font-size:11.5px;color:var(--dim);line-height:1.5}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hudbox" id="scoreBox"><small>Score</small><span id="score">0</span> <span class="best" id="best"></span></div>
+  <div id="msgBox"></div>
+  <div id="sysBtns">
+    <div class="sysbtn" id="slowBtn" title="Slow motion (S)">🐌</div>
+    <div class="sysbtn" id="resetBtn" title="Reset to last bar (R)">↺</div>
+    <div class="sysbtn" id="helpBtn" title="Help">?</div>
+  </div>
+</div>
+
+<div id="touch">
+  <div class="cluster">
+    <div class="tbtn med" id="btnArch"><div class="ic">🤸</div><div class="lb">ARCH</div></div>
+    <div class="tbtn med" id="btnTuck"><div class="ic">🌀</div><div class="lb">TUCK</div></div>
+  </div>
+  <div class="cluster">
+    <div class="tbtn sm" id="btnTwistL"><div class="ic">⟲</div><div class="lb">TWIST</div></div>
+    <div class="tbtn sm" id="btnTwistR"><div class="ic">⟳</div><div class="lb">TWIST</div></div>
+    <div class="tbtn big" id="btnLetGo"><div class="ic">🖐️</div><div class="lb">LET GO</div></div>
+  </div>
+</div>
+
+<div id="help">
+  <div id="helpCard">
+    <h1>Noomi<span>Clone</span> — Web Tribute</h1>
+    <p class="sub">A physics ragdoll bar-swinging playground. Build a swing, let go, flip, and catch the next bar — or stick the landing on the final mat.</p>
+    <div class="ctl"><div class="key">ARCH</div><div>Hold <b>←</b> or the ARCH button. Pump the swing bigger; open up mid-flight to slow your spin for a catch or landing.</div></div>
+    <div class="ctl"><div class="key">TUCK</div><div>Hold <b>Space</b> or the TUCK button. Curl tight to spin faster and swing harder. On the ground, hold to squat and release to jump.</div></div>
+    <div class="ctl"><div class="key">LET GO</div><div>Tap <b>↑</b> or the red button to release the bar. Your hands re-grab automatically when they reach the next bar.</div></div>
+    <div class="ctl"><div class="key">TWIST</div><div><b>Q</b> / <b>E</b> or the ⟲ ⟳ buttons while airborne to twist. Full flips +50, twists +75, new bars +100, clean catches +25, stuck landings +150.</div></div>
+    <div class="ctl"><div class="key">EXTRAS</div><div><b>R</b> resets to the last bar you grabbed. <b>S</b> toggles slow motion. Fully playable with touch on mobile — hold the big buttons, tap LET GO.</div></div>
+    <button id="playBtn">Start swinging</button>
+    <p class="foot">Unofficial fan-made tribute built with original code and art, inspired by the NoomiClone mobile app by Matthew Jones. Not affiliated with or endorsed by the original developer.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   NoomiClone — Web Tribute
+   Hybrid engine: while holding a bar the gymnast is a driven pendulum
+   (predictable, pumpable swings; body posed by ARCH / TUCK), in the air
+   he is a free Verlet ragdoll with pose muscles, flip/twist scoring,
+   magnetic regrabs and stuck-landing detection. Original code.
+   ===================================================================== */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+window.addEventListener('resize', resize); resize();
+
+/* ---------------- World ---------------- */
+const GRAV = 13.5;               // m/s^2 — softer than Earth so flights carry
+const FLOOR_Y = 0;
+const bars = [
+  {x0: 0.0,  x1: 2.4,  y: -2.78},
+  {x0: 3.1,  x1: 5.5,  y: -2.78},
+  {x0: 6.3,  x1: 8.7,  y: -2.95},
+  {x0: 9.6,  x1: 12.0, y: -2.62},
+  {x0: 13.05, x1: 15.45, y: -2.85},
+  {x0: 16.65, x1: 19.05, y: -3.05},
+  {x0: 20.4, x1: 22.8, y: -2.70},
+  {x0: 24.3, x1: 26.7, y: -2.90},
+  {x0: 28.35, x1: 30.75, y: -2.66},
+  {x0: 32.55, x1: 34.95, y: -2.88}
+];
+const FINISH = {x0: 37.5, x1: 43.5};
+const COURSE_END_X = 45;
+
+/* ---------------- Input ---------------- */
+const input = {arch:false, tuck:false, twistL:false, twistR:false};
+let letGoQueued = false;
+function pressLetGo(){ letGoQueued = true; }
+const holdKeys = { ArrowLeft:'arch', KeyA:'arch', ArrowDown:'tuck', Space:'tuck', KeyQ:'twistL', KeyE:'twistR' };
+window.addEventListener('keydown', e => {
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') { if (!e.repeat) pressLetGo(); e.preventDefault(); }
+  else if (e.code === 'KeyR') { if (!e.repeat) respawn(); }
+  else if (e.code === 'KeyS') { if (!e.repeat) toggleSlow(); }
+  else if (holdKeys[e.code]) { input[holdKeys[e.code]] = true; e.preventDefault(); }
+});
+window.addEventListener('keyup', e => { if (holdKeys[e.code]) input[holdKeys[e.code]] = false; });
+function bindHold(id, prop, onTap){
+  const el = document.getElementById(id);
+  const on = e => { e.preventDefault(); el.classList.add('held'); if (prop) input[prop] = true; if (onTap) onTap(); };
+  const off = e => { e.preventDefault(); el.classList.remove('held'); if (prop) input[prop] = false; };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('pointerleave', off);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+bindHold('btnArch', 'arch');
+bindHold('btnTuck', 'tuck');
+bindHold('btnTwistL', 'twistL');
+bindHold('btnTwistR', 'twistR');
+bindHold('btnLetGo', null, pressLetGo);
+document.getElementById('resetBtn').addEventListener('click', () => respawn());
+document.getElementById('helpBtn').addEventListener('click', () => { document.getElementById('help').classList.remove('hidden'); paused = true; });
+document.getElementById('playBtn').addEventListener('click', () => { document.getElementById('help').classList.add('hidden'); paused = false; });
+let slowmo = false;
+function toggleSlow(){
+  slowmo = !slowmo;
+  document.getElementById('slowBtn').classList.toggle('on', slowmo);
+}
+document.getElementById('slowBtn').addEventListener('click', toggleSlow);
+
+/* ---------------- Ragdoll particles (free-flight body) ---------------- */
+const P = {};
+function particle(x, y, r){ return {x, y, px: x, py: y, r: r || 0.09}; }
+const links = [];
+const muscles = [];
+function link(a, b, stiff){
+  const dx = P[b].x - P[a].x, dy = P[b].y - P[a].y;
+  links.push({a, b, len: Math.hypot(dx, dy), stiff: stiff == null ? 1 : stiff});
+}
+function muscle(a, b, len, when, stiff){ muscles.push({a, b, len, when, stiff}); }
+function buildRagdoll(hx, hy){
+  P.handL  = particle(hx - 0.19, hy, 0.07);
+  P.handR  = particle(hx + 0.19, hy, 0.07);
+  P.elbowL = particle(hx - 0.30, hy + 0.30, 0.07);
+  P.elbowR = particle(hx + 0.30, hy + 0.30, 0.07);
+  P.chest  = particle(hx, hy + 0.62, 0.11);
+  P.head   = particle(hx, hy + 0.30, 0.13);
+  P.pelvis = particle(hx, hy + 1.12, 0.11);
+  P.kneeL  = particle(hx - 0.15, hy + 1.56, 0.08);
+  P.kneeR  = particle(hx + 0.15, hy + 1.56, 0.08);
+  P.footL  = particle(hx - 0.15, hy + 2.00, 0.07);
+  P.footR  = particle(hx + 0.15, hy + 2.00, 0.07);
+  links.length = 0; muscles.length = 0;
+  link('chest','head'); link('chest','pelvis');
+  link('chest','elbowL'); link('elbowL','handL');
+  link('chest','elbowR'); link('elbowR','handR');
+  link('pelvis','kneeL'); link('kneeL','footL');
+  link('pelvis','kneeR'); link('kneeR','footR');
+  link('head','pelvis', 1.0);
+  link('elbowL','elbowR', 0.6);
+  link('kneeL','kneeR', 0.6);
+  link('handL','handR', 0.35);
+  link('chest','kneeL', 0.25); link('chest','kneeR', 0.25);
+  const T = () => input.tuck, A = () => input.arch;
+  muscle('kneeL','chest', 0.55, T, 0.35);  muscle('kneeR','chest', 0.55, T, 0.35);
+  muscle('footL','pelvis', 0.45, T, 0.3);  muscle('footR','pelvis', 0.45, T, 0.3);
+  muscle('head','pelvis', 0.62, T, 0.25);
+  muscle('footL','head', 1.68, A, 0.35);   muscle('footR','head', 1.68, A, 0.35);
+  muscle('footL','pelvis', 0.88, A, 0.4);  muscle('footR','pelvis', 0.88, A, 0.4);
+  // In flight with no pose held, the body gently seeks a layout so the
+  // hands lead the flight instead of trailing in a tucked ball.
+  const LAY = () => airborne && !input.tuck && !input.arch;
+  muscle('footL','head', 1.68, LAY, 0.2); muscle('footR','head', 1.68, LAY, 0.2);
+  muscle('footL','pelvis', 0.88, LAY, 0.22); muscle('footR','pelvis', 0.88, LAY, 0.22);
+}
+
+/* ---------------- Game state ---------------- */
+let mode = 'grab';                       // 'grab' (pendulum) | 'free' (ragdoll)
+let grabbed = {handL: null, handR: null};
+let pend = {bar: 0, gripX: 0, theta: 0, omega: 0, Lcom: 1.05};
+let pose = {tuck: 0, arch: 0};
+let grabCooldown = 0;
+let regrabBar = -1, regrabArmed = true;
+let score = 0, best = +(localStorage.getItem('noomiBest') || 0);
+let visitedBars = new Set();
+let checkpointBar = 0;
+let airborne = false, airSpin = 0, airTwist = 0, lastBodyAng = 0, twistPhase = 0;
+let grounded = false, squatCharge = 0, wasTuckGrounded = false;
+let finished = false, paused = true, timeScale = 1;
+let popups = [], sticks = 0;
+let camX = 1.2, camY = -1.6;
+const msgEl = document.getElementById('msgBox');
+let msgTimer = 0;
+function showMsg(t, dur){ msgEl.textContent = t; msgTimer = dur || 1.6; }
+function addScore(n, x, y, label){
+  score += n;
+  popups.push({x, y, text: (label ? label + ' ' : '') + '+' + n, t: 0});
+  document.getElementById('score').textContent = score;
+  if (score > best) { best = score; localStorage.setItem('noomiBest', best); }
+  document.getElementById('best').textContent = best ? '· BEST ' + best : '';
+}
+document.getElementById('best').textContent = best ? '· BEST ' + best : '';
+
+function com(){
+  let x = 0, y = 0, n = 0;
+  for (const k in P) { x += P[k].x; y += P[k].y; n++; }
+  return {x: x / n, y: y / n};
+}
+function comVel(dt){
+  let x = 0, y = 0, n = 0;
+  for (const k in P) { x += (P[k].x - P[k].px) / dt; y += (P[k].y - P[k].py) / dt; n++; }
+  return {x: x / n, y: y / n};
+}
+function bodyAngle(){
+  return Math.atan2(P.head.x - P.pelvis.x, -(P.head.y - P.pelvis.y));
+}
+function angVel(){
+  const c = com();
+  let num = 0, den = 0;
+  for (const k in P) {
+    const p = P[k], rx = p.x - c.x, ry = p.y - c.y;
+    const vx = p.x - p.px, vy = p.y - p.py;
+    num += rx * vy - ry * vx; den += rx * rx + ry * ry;
+  }
+  return den ? num / den : 0;
+}
+
+function spawnAtBar(i){
+  const b = bars[i];
+  const hx = Math.min(b.x0 + 0.65, b.x1 - 0.3);
+  buildRagdoll(hx, b.y);
+  mode = 'grab';
+  pend = {bar: i, gripX: hx, theta: 0, omega: 0, Lcom: 1.05};
+  pose = {tuck: 0, arch: 0};
+  grabbed = {handL: {bar: i, x: hx - 0.19}, handR: {bar: i, x: hx + 0.19}};
+  regrabBar = -1; regrabArmed = true;
+  visitedBars.add(i); checkpointBar = i;
+  airborne = false; airSpin = 0; airTwist = 0; finished = false;
+  camX = hx; camY = b.y + 1.2;
+  poseSkeleton(1 / 120);
+}
+function respawn(){ spawnAtBar(checkpointBar); showMsg('Back on the bar', 1.0); }
+
+function enterGrab(i, hx, dt){
+  const b = bars[i];
+  const c = com(), v = comVel(dt);
+  const gx = Math.max(b.x0 + 0.25, Math.min(b.x1 - 0.25, hx));
+  const rx = c.x - gx, ry = c.y - b.y;
+  const theta = Math.atan2(rx, ry);
+  const L = Math.max(0.8, Math.min(1.3, Math.hypot(rx, ry)));
+  const nx = Math.cos(theta), ny = -Math.sin(theta);
+  let omega = (v.x * nx + v.y * ny) / L;
+  omega = Math.max(-4.3, Math.min(4.3, omega));
+  mode = 'grab';
+  pend = {bar: i, gripX: gx, theta, omega, Lcom: L};
+  grabbed = {handL: {bar: i, x: gx - 0.19}, handR: {bar: i, x: gx + 0.19}};
+  grabCooldown = 0.15;
+  onGrab(i);
+  poseSkeleton(dt);
+}
+
+/* Pose the whole skeleton from the pendulum state (grab mode). */
+function poseSkeleton(dt){
+  const b = bars[pend.bar];
+  const gx = pend.gripX, gy = b.y;
+  const th = pend.theta;
+  const dx = Math.sin(th), dy = Math.cos(th);       // body axis: grip -> feet
+  const nx = Math.cos(th), ny = -Math.sin(th);      // body front direction
+  const t = pose.tuck, a = pose.arch;
+  const offs = {
+    handL:  [0, -0.19], handR:  [0, 0.19],
+    elbowL: [0.30, -0.31], elbowR: [0.30, 0.31],
+    head:   [0.30, -0.10 - 0.10 * a + 0.08 * t],
+    chest:  [0.62, 0.10 * t],
+    pelvis: [1.12, 0.04 * t],
+    kneeL:  [1.56 - 0.50 * t, -0.15 + 0.38 * t - 0.04 * a],
+    kneeR:  [1.56 - 0.50 * t,  0.15 + 0.38 * t - 0.04 * a],
+    footL:  [2.00 - 0.95 * t + 0.05 * a, -0.15 + 0.10 * t - 0.38 * a],
+    footR:  [2.00 - 0.95 * t + 0.05 * a,  0.15 + 0.10 * t - 0.38 * a]
+  };
+  for (const k in offs) {
+    const u = offs[k][0], v = offs[k][1];
+    const p = P[k];
+    const x = gx + dx * u + nx * v, y = gy + dy * u + ny * v;
+    // analytic velocity: omega * d(pos)/d(theta)
+    const vx = pend.omega * (nx * u - dx * v);
+    const vy = pend.omega * (ny * u - dy * v);
+    p.x = x; p.y = y;
+    p.px = x - vx * dt; p.py = y - vy * dt;
+  }
+}
+
+/* ---------------- Physics ---------------- */
+function solve(c){
+  const A = P[c.a], B = P[c.b];
+  let dx = B.x - A.x, dy = B.y - A.y;
+  const d = Math.hypot(dx, dy) || 1e-6;
+  const diff = (d - c.len) / d * 0.5 * c.stiff;
+  dx *= diff; dy *= diff;
+  A.x += dx; A.y += dy; B.x -= dx; B.y -= dy;
+}
+
+function step(dt){
+  if (grabCooldown > 0) grabCooldown -= dt;
+
+  /* ----- LET GO (from grab mode) ----- */
+  if (letGoQueued) {
+    letGoQueued = false;
+    if (mode === 'grab') {
+      // Launch from the pendulum state itself, so the flight always
+      // matches the swing you built (particle-average velocities of a
+      // tucked body would under-read it). Rotation about the COM is kept.
+      const cv = comVel(dt);
+      const spd = pend.omega * pend.Lcom * 1.25;
+      const lvx = Math.cos(pend.theta) * spd, lvy = -Math.sin(pend.theta) * spd;
+      for (const k in P) {
+        const p = P[k], vx = (p.x - p.px) / dt, vy = (p.y - p.py) / dt;
+        p.px = p.x - (lvx + (vx - cv.x) * 0.8) * dt;
+        p.py = p.y - (lvy + (vy - cv.y) * 0.8) * dt;
+      }
+      regrabBar = pend.bar; regrabArmed = false;   // no instant same-bar regrab
+      mode = 'free';
+      grabbed = {handL: null, handR: null};
+      grabCooldown = 0.25;
+      airborne = true; airSpin = 0; airTwist = 0; lastBodyAng = bodyAngle();
+    }
+  }
+
+  if (mode === 'grab') {
+    /* ----- Pendulum swing ----- */
+    pose.tuck += ((input.tuck ? 1 : 0) - pose.tuck) * Math.min(1, dt * 9);
+    pose.arch += ((input.arch ? 1 : 0) - pose.arch) * Math.min(1, dt * 9);
+    // Tucking shortens the swing radius -> spins up (angular momentum)
+    const targetL = 1.05 * (1 - 0.20 * pose.tuck) * (1 + 0.03 * pose.arch);
+    pend.omega *= Math.pow(pend.Lcom / targetL, 2 * dt * 9);
+    pend.Lcom += (targetL - pend.Lcom) * Math.min(1, dt * 9);
+    let acc = -(GRAV / pend.Lcom) * Math.sin(pend.theta);
+    if (input.arch || input.tuck) {   // drive the swing like a gymnast
+      const dir = Math.abs(pend.omega) > 0.15 ? Math.sign(pend.omega) : (input.tuck ? 1 : -1);
+      acc += dir * 2.6;
+    }
+    pend.omega += acc * dt;
+    pend.omega = Math.max(-4.6, Math.min(4.6, pend.omega));
+    pend.theta += pend.omega * dt;
+    poseSkeleton(dt);
+    grounded = false;
+    return;
+  }
+
+  /* ----- Free ragdoll flight ----- */
+  for (const k in P) {
+    const p = P[k];
+    const vx = (p.x - p.px) * 0.999, vy = (p.y - p.py) * 0.999;
+    p.px = p.x; p.py = p.y;
+    p.x += vx; p.y += vy + GRAV * dt * dt;
+  }
+  // Squat jump: grounded, tuck held then released after charging
+  if (grounded && wasTuckGrounded && !input.tuck && squatCharge > 0.25) {
+    const imp = 4.2 + 2.2 * Math.min(1, squatCharge);
+    for (const k in P) { P[k].py += imp * dt; }
+    if (input.arch) for (const k in P) { P[k].px -= 1.6 * dt; }
+    showMsg('Squat jump!', 0.7);
+  }
+  wasTuckGrounded = grounded && input.tuck;
+  if (wasTuckGrounded) squatCharge = Math.min(1, squatCharge + dt * 2.2); else squatCharge = 0;
+
+  // Air pose: tuck spins faster, arch opens up and bleeds spin; twists
+  if (airborne) {
+    const w = angVel(), c = com();
+    let f = 0;
+    if (input.tuck) f = 1 + 2.6 * dt;
+    else if (input.arch) f = 1 - 2.4 * dt;
+    else f = 1 - 1.6 * dt;   // a layout is naturally stable: spin bleeds off
+    if (input.twistL) { twistPhase -= 5.2 * dt; airTwist -= 5.2 * dt; }
+    if (input.twistR) { twistPhase += 5.2 * dt; airTwist += 5.2 * dt; }
+    if (f) {
+      for (const k in P) {
+        const p = P[k];
+        const vx = p.x - p.px, vy = p.y - p.py;
+        const rx = p.x - c.x, ry = p.y - c.y;
+        const tx = -ry * w, ty = rx * w;
+        p.px = p.x - ((vx - tx) + tx * f);
+        p.py = p.y - ((vy - ty) + ty * f);
+      }
+    }
+    airSpin += 0; // (accumulated below from body angle)
+    const a2 = bodyAngle();
+    let d = a2 - lastBodyAng;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    airSpin += d; lastBodyAng = a2;
+  }
+
+  // Constraints — muscles nudge first, structure has the last word
+  for (let it = 0; it < 10; it++) {
+    for (const m of muscles) if (m.when()) solve(m);
+    for (const c of links) solve(c);
+    for (const k in P) {
+      const p = P[k];
+      if (p.y > FLOOR_Y - p.r) {
+        p.y = FLOOR_Y - p.r;
+        p.px += (p.x - p.px) * 0.35;   // friction
+      }
+    }
+  }
+
+  // Magnetic regrab. The bar you just released stays locked out until
+  // you have genuinely left its zone (a hand > 1.1 m away) — deliberate
+  // regrabs after a real fly-out still work.
+  if (!regrabArmed && regrabBar >= 0) {
+    const b = bars[regrabBar];
+    for (const h of ['handL', 'handR']) {
+      const p = P[h];
+      const cx = Math.max(b.x0, Math.min(b.x1, p.x));
+      if (Math.hypot(p.x - cx, p.y - b.y) > 1.1) { regrabArmed = true; break; }
+    }
+  }
+  if (grabCooldown <= 0) {
+    for (const h of ['handL', 'handR']) {
+      const p = P[h];
+      for (let i = 0; i < bars.length; i++) {
+        if (i === regrabBar && !regrabArmed) continue;
+        const b = bars[i];
+        const cx = Math.max(b.x0, Math.min(b.x1, p.x));
+        if (Math.hypot(p.x - cx, p.y - b.y) < 0.65) { enterGrab(i, cx, dt); return; }
+      }
+    }
+  }
+
+  grounded = (P.footL.y > FLOOR_Y - 0.16 && P.footR.y > FLOOR_Y - 0.16);
+  if (airborne && (P.footL.y > FLOOR_Y - 0.12 || P.footR.y > FLOOR_Y - 0.12 || P.head.y > FLOOR_Y - 0.16)) {
+    land();
+  }
+  const cc = com();
+  if (cc.y > 3 || cc.x < -4) respawn();
+}
+
+function onGrab(i){
+  if (airborne) settleAirScore();
+  airborne = false;
+  if (!visitedBars.has(i)) {
+    visitedBars.add(i);
+    checkpointBar = i;
+    const c = com();
+    addScore(100, c.x, c.y - 1.4, 'New bar!');
+    showMsg('Bar ' + visitedBars.size + ' of ' + bars.length, 1.1);
+  } else {
+    const c = com();
+    addScore(25, c.x, c.y - 1.4, 'Clean catch');
+  }
+}
+function settleAirScore(){
+  const flips = Math.floor(Math.abs(airSpin) / (2 * Math.PI));
+  const twists = Math.floor(Math.abs(airTwist) / (2 * Math.PI));
+  const c = com();
+  if (flips > 0) addScore(50 * flips, c.x, c.y - 1.2, flips > 1 ? flips + ' flips!' : 'Flip!');
+  if (twists > 0) addScore(75 * twists, c.x, c.y - 1.8, 'Twist!');
+}
+function land(){
+  settleAirScore();
+  airborne = false;
+  regrabBar = -1; regrabArmed = true;
+  const c = com();
+  const upright = Math.abs(bodyAngle()) < 0.62;
+  const feetDown = P.footL.y > P.pelvis.y && P.footR.y > P.pelvis.y;
+  const headSafe = P.head.y < FLOOR_Y - 0.55;
+  const inFinish = c.x > FINISH.x0 && c.x < FINISH.x1;
+  if (upright && feetDown && headSafe) {
+    sticks++;
+    addScore(150, c.x, c.y - 1.3, 'STUCK IT!');
+    if (inFinish && !finished) {
+      finished = true;
+      addScore(500, c.x, c.y - 2.0, 'COURSE CLEAR!');
+      showMsg('🏆 Course clear! Score ' + score + ' — press R to run it again', 4);
+    } else {
+      showMsg('Stuck the landing! 🧲 Hold TUCK to squat, release to jump back up', 2.2);
+    }
+  } else {
+    showMsg('Wipeout! Press R / ↺ to get back on the bar', 2.0);
+  }
+}
+
+/* ---------------- Render ---------------- */
+function ppm(){ return Math.min(H / 6.4, W / 9.5); }
+function toScreen(x, y){
+  const s = ppm();
+  return [ (x - camX) * s + W / 2, (y - camY) * s + H * 0.52 ];
+}
+function draw(){
+  const s = ppm();
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0d2136'); g.addColorStop(0.62, '#14344e'); g.addColorStop(1, '#0a1826');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(255,255,255,0.045)';
+  for (let i = -2; i < 30; i++) {
+    const bx = (i * 260 - (camX * s * 0.25) % 260 + 260) % (W + 320) - 160;
+    const bh = 60 + ((i * 73) % 90);
+    ctx.fillRect(bx, H * 0.52 - bh + (-camY * s * 0.25), 150, bh);
+  }
+  const [fx0, fy] = toScreen(camX - W / 2 / s - 2, FLOOR_Y);
+  ctx.fillStyle = '#1c4d6e'; ctx.fillRect(0, fy, W, H - fy);
+  ctx.fillStyle = '#2a6a94'; ctx.fillRect(0, fy, W, 5);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2;
+  const matStep = 2 * s;
+  let startX = fx0 % matStep;
+  ctx.beginPath();
+  for (let x = startX; x < W; x += matStep) { ctx.moveTo(x, fy + 5); ctx.lineTo(x, H); }
+  ctx.stroke();
+  const [z0] = toScreen(FINISH.x0, FLOOR_Y), [z1] = toScreen(FINISH.x1, FLOOR_Y);
+  ctx.fillStyle = '#c9932b'; ctx.fillRect(z0, fy - 6, z1 - z0, 8);
+  ctx.fillStyle = '#ffe9b0'; ctx.font = '700 13px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('★ FINISH — STICK IT HERE ★', (z0 + z1) / 2, fy - 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '600 11px sans-serif';
+  for (let m = 0; m <= COURSE_END_X; m += 10) {
+    const [mx] = toScreen(m, FLOOR_Y);
+    if (mx > -40 && mx < W + 40) ctx.fillText(m + 'm', mx, fy + 18);
+  }
+  for (let i = 0; i < bars.length; i++) {
+    const b = bars[i];
+    const [x0, y] = toScreen(b.x0, b.y), [x1] = toScreen(b.x1, b.y);
+    if (x1 < -60 || x0 > W + 60) continue;
+    ctx.strokeStyle = '#5b7d95'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0, fy); ctx.moveTo(x1, y); ctx.lineTo(x1, fy); ctx.stroke();
+    ctx.strokeStyle = visitedBars.has(i) ? '#ffd166' : '#cfd8dc';
+    ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '700 12px sans-serif';
+    ctx.fillText(String(i + 1), (x0 + x1) / 2, y - 12);
+  }
+  ctx.textAlign = 'center';
+  for (const p of popups) {
+    const [px, py] = toScreen(p.x, p.y);
+    ctx.globalAlpha = Math.max(0, 1 - p.t / 1.3);
+    ctx.fillStyle = '#ffd166'; ctx.font = '800 17px sans-serif';
+    ctx.fillText(p.text, px, py - p.t * 34);
+    ctx.globalAlpha = 1;
+  }
+  drawRagdoll();
+}
+function limb(a2, b2, w, color){
+  const [x0, y0] = toScreen(P[a2].x, P[a2].y), [x1, y1] = toScreen(P[b2].x, P[b2].y);
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+}
+function drawRagdoll(){
+  const s = ppm();
+  const tw = Math.cos(twistPhase);
+  const skin = '#f2c49b', shirt = '#39d0d8', pants = '#274b63', shoe = '#ffb340';
+  ctx.save();
+  const [cx, cy] = toScreen(P.chest.x, P.chest.y);
+  ctx.translate(cx, cy); ctx.scale(Math.max(0.25, Math.abs(tw)), 1); ctx.translate(-cx, -cy);
+  const lw = Math.max(5, 0.11 * s);
+  limb('pelvis', 'kneeL', lw, pants); limb('kneeL', 'footL', lw * 0.85, skin);
+  limb('pelvis', 'kneeR', lw, pants); limb('kneeR', 'footR', lw * 0.85, skin);
+  limb('chest', 'elbowL', lw * 0.85, skin); limb('elbowL', 'handL', lw * 0.8, skin);
+  limb('chest', 'elbowR', lw * 0.85, skin); limb('elbowR', 'handR', lw * 0.8, skin);
+  limb('pelvis', 'chest', lw * 1.5, shirt);
+  const [hx, hy] = toScreen(P.head.x, P.head.y);
+  ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hy, Math.max(6, 0.125 * s), 0, 7); ctx.fill();
+  ctx.fillStyle = '#22384a'; ctx.beginPath(); ctx.arc(hx, hy - Math.max(3, 0.05 * s), Math.max(6, 0.125 * s), Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+  for (const f of ['footL', 'footR']) {
+    const [fx, fy2] = toScreen(P[f].x, P[f].y);
+    ctx.fillStyle = shoe; ctx.beginPath(); ctx.arc(fx, fy2, Math.max(3.5, 0.055 * s), 0, 7); ctx.fill();
+  }
+  for (const h of ['handL', 'handR']) {
+    if (!grabbed[h]) continue;
+    const [gx, gy] = toScreen(P[h].x, P[h].y);
+    ctx.fillStyle = '#ffd166'; ctx.beginPath(); ctx.arc(gx, gy, 5, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------------- Main loop ---------------- */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 120;
+function frame(now){
+  requestAnimationFrame(frame);
+  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  timeScale += ((slowmo ? 0.35 : 1) - timeScale) * 0.2;
+  if (!paused) {
+    acc += dt * timeScale;
+    while (acc > STEP) { step(STEP); acc -= STEP; }
+  }
+  const c = com();
+  camX += (c.x - camX) * 0.08;
+  camY += ((c.y + 0.4) - camY) * 0.06;
+  camY = Math.max(-2.6, Math.min(0.4, camY));
+  for (const p of popups) p.t += dt;
+  popups = popups.filter(p => p.t < 1.3);
+  if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) msgEl.textContent = ''; }
+  draw();
+}
+spawnAtBar(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
