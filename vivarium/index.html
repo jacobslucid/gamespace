@@ -189,7 +189,7 @@ function resize(){
 }
 window.addEventListener('resize', resize);
 
-const FOOD_VALUE = 26, POP_CAP = 230, FOOD_CAP = 520;
+const FOOD_VALUE = 26, POP_CAP = 230, HARD_CAP = 320, FOOD_CAP = 520;
 let creatures = [], foods = [], ripples = [];
 let worldTime = 0, births = 0, deaths = 0, maxGen = 0, eaten = 0;
 let bloom = {x: 300, y: 300, t: 0};               // the wandering patch of plenty
@@ -311,8 +311,12 @@ function step(){
     if (c.x > W - 14) { c.x = W - 14; c.vx = -Math.abs(c.vx) * 0.6; }
     if (c.y < 14) { c.y = 14; c.vy = Math.abs(c.vy) * 0.6; }
     if (c.y > H - 14) { c.y = H - 14; c.vy = -Math.abs(c.vy) * 0.6; }
-    // living costs: existing, moving, thinking
-    c.energy -= DT * (0.55 * c.g.size + thrust * 1.5 + 0.30);
+    // living costs: existing, moving, thinking — plus two pressures that
+    // keep generations turning over instead of freezing at the cap:
+    let drain = 0.55 * c.g.size + thrust * 1.5 + 0.30;
+    if (c.age > 60) drain *= 1 + (c.age - 60) / 240;                    // senescence
+    if (creatures.length > POP_CAP) drain += (creatures.length - POP_CAP) * 0.012; // crowding
+    c.energy -= DT * drain;
     // eat
     if (nf && nf.d < c.r + 7) {
       const fi = foods.indexOf(nf.o);
@@ -334,7 +338,7 @@ function step(){
       if (c.trail.length > 26) c.trail.splice(0, 2);
     }
     // reproduce
-    if (c.energy > c.maxEnergy * 0.82 && c.age > 4 && creatures.length < POP_CAP) {
+    if (c.energy > c.maxEnergy * 0.82 && c.age > 4 && creatures.length < HARD_CAP) {
       const childE = c.energy * 0.38;
       c.energy *= 0.55;
       const child = makeCreature(
@@ -578,8 +582,11 @@ function togglePause(){
   el('btnPause').textContent = running ? 'Pause' : 'Resume';
   el('btnPause').classList.toggle('on', !running);
 }
+const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
+let speedIdx = 0;
 function cycleSpeed(){
-  speedMul = speedMul >= 4 ? 1 : speedMul * 2;
+  speedIdx = (speedIdx + 1) % SPEEDS.length;
+  speedMul = SPEEDS[speedIdx];
   el('btnSpeed').textContent = 'Time ×' + speedMul;
 }
 function newWorld(){ seedWorld((Math.random() * 1e9) | 0); pickElder(); }
@@ -596,9 +603,14 @@ function frame(now){
   let dt = Math.min(0.06, (now - last) / 1000); last = now;
   if (running) {
     acc += dt * speedMul;
-    let guard = 0;
-    while (acc > DT && guard < 12) { step(); acc -= DT; guard++; }
-    if (guard >= 12) acc = 0;
+    if (acc > 3) acc = 3;                        // never owe more than 3s of sim time
+    const t0 = performance.now();
+    let steps = 0;
+    while (acc > DT && steps < 260) {
+      step(); acc -= DT; steps++;
+      // fast-forward as hard as the device allows, but yield before the frame chokes
+      if (steps % 8 === 0 && performance.now() - t0 > 13) break;
+    }
   }
   elderTimer -= dt;
   if (elderTimer <= 0) { pickElder(); elderTimer = 0.5; }
