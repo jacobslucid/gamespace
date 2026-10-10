@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>LITTLINGS — they need you</title>
+<style>
+  :root{
+    --ink:#f3efe6; --dim:#b9b3a4; --faint:#7d7768; --accent:#ffb35c; --pink:#ff9db1; --mint:#9fe8c1;
+    --panel:rgba(16,14,10,.66); --line:rgba(255,255,255,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#171310}
+  body{font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink);
+       user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+  #world{position:fixed;inset:0;display:block;touch-action:none}
+  #masthead{position:fixed;top:0;left:0;padding:20px 24px;z-index:5;pointer-events:none}
+  #masthead h1{font-size:15px;font-weight:600;letter-spacing:6px;text-transform:uppercase}
+  #masthead h1 b{color:var(--accent)}
+  #masthead p{margin-top:5px;font-size:12px;letter-spacing:1.6px;color:var(--dim);text-transform:uppercase}
+  #stats{position:fixed;top:18px;right:20px;z-index:5;display:flex;gap:18px;background:var(--panel);
+         border:1px solid var(--line);border-radius:14px;padding:9px 15px;backdrop-filter:blur(8px)}
+  .stat{text-align:right}
+  .stat .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat .k{font-size:9.5px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-top:1px}
+  .stat .v.warn{color:#ff8f7a}
+  /* selected creature card */
+  #card{position:fixed;left:20px;bottom:96px;z-index:6;background:var(--panel);border:1px solid var(--line);
+        border-radius:16px;padding:12px 14px;backdrop-filter:blur(8px);width:250px;display:none}
+  #card .nm{font-size:16px;font-weight:700}
+  #card .meta{font-size:11px;color:var(--dim);margin:2px 0 8px}
+  #card .thought{font-size:12.5px;font-style:italic;color:var(--accent);margin-bottom:9px;min-height:16px}
+  .bar{display:flex;align-items:center;gap:7px;margin:4px 0;font-size:10.5px;color:var(--dim)}
+  .bar .ic{width:15px;text-align:center}
+  .bar .tr{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
+  .bar .fl{height:100%;border-radius:3px;transition:width .3s}
+  /* action bar */
+  #actions{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:6;display:flex;gap:8px;
+           background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:9px;backdrop-filter:blur(9px)}
+  .abtn{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.05);
+        border:1px solid transparent;color:var(--ink);border-radius:13px;padding:8px 11px;cursor:pointer;min-width:58px}
+  .abtn:hover{background:rgba(255,255,255,.12)}
+  .abtn .e{font-size:19px;line-height:1}
+  .abtn .t{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+  .abtn.alert{border-color:#ff8f7a;animation:pulse 1s infinite}
+  .abtn.on{background:var(--accent);color:#2a1a05}
+  .abtn.on .t{color:#2a1a05}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,143,122,.0)}50%{box-shadow:0 0 0 6px rgba(255,143,122,.18)}}
+  /* shop */
+  #shop{position:fixed;right:20px;bottom:96px;z-index:6;display:flex;flex-direction:column;gap:7px}
+  .shopItem{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;
+            backdrop-filter:blur(8px);font-size:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:196px}
+  .shopItem:hover{border-color:rgba(255,255,255,.3)}
+  .shopItem.owned{opacity:.55;cursor:default}
+  .shopItem .cost{color:var(--accent);font-weight:700}
+  .shopItem .nm2{font-weight:600}
+  .shopItem .ds{color:var(--dim);font-size:10.5px}
+  /* toast */
+  #toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:7;text-align:center;pointer-events:none;
+         opacity:0;transition:opacity .35s;max-width:88vw}
+  #toast .big{font-size:19px;font-weight:700;letter-spacing:.4px}
+  #toast .small{font-size:12.5px;color:var(--dim);margin-top:3px}
+  #speedBtn{position:fixed;right:20px;top:86px;z-index:6}
+  .cbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:12px;
+        padding:9px 13px;font-size:12.5px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px)}
+  /* intro */
+  #intro{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+         background:radial-gradient(ellipse at 50% 42%,rgba(20,14,8,.30),rgba(10,8,5,.9) 75%);padding:20px}
+  #introCard{text-align:center;max-width:620px}
+  #introCard .over{font-size:11px;letter-spacing:5px;color:var(--accent);text-transform:uppercase;margin-bottom:18px}
+  #introCard h1{font-size:clamp(40px,8.5vw,74px);font-weight:200;letter-spacing:11px;text-transform:uppercase;line-height:1}
+  #introCard h1 b{font-weight:700;color:var(--accent)}
+  #introCard .poem{margin:26px auto 8px;font-size:clamp(15px,2.4vw,18px);line-height:1.85;color:#e8e1d2;font-weight:300;max-width:540px}
+  #introCard .poem em{color:var(--accent);font-style:normal}
+  #enterBtn{margin-top:30px;background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.35);
+            border-radius:999px;padding:14px 42px;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  #enterBtn:hover{background:var(--accent);color:#2a1a05;border-color:transparent}
+  #introCard .foot{margin-top:26px;font-size:11px;color:var(--faint);letter-spacing:.6px;line-height:1.7}
+  .hidden{display:none !important}
+  @media (max-width:760px){
+    #shop{display:none}
+    #card{bottom:104px;left:12px;width:218px}
+    #stats{gap:11px;padding:8px 11px;top:12px;right:12px}
+    #masthead{padding:14px}
+    .abtn{min-width:50px;padding:7px 8px}
+    #speedBtn{top:74px;right:12px}
+  }
+</style>
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<div id="masthead">
+  <h1>Littlings</h1>
+  <p>they need you</p>
+</div>
+
+<div id="stats">
+  <div class="stat"><div class="v" id="stPop">0</div><div class="k">littlings</div></div>
+  <div class="stat"><div class="v" id="stCare">0</div><div class="k">care ♥</div></div>
+  <div class="stat"><div class="v" id="stBorn">0</div><div class="k">born</div></div>
+  <div class="stat"><div class="v" id="stLost">0</div><div class="k">lost</div></div>
+  <div class="stat"><div class="v" id="stTrouble">0</div><div class="k">in trouble</div></div>
+</div>
+
+<button class="cbtn" id="speedBtn">Time ×1</button>
+
+<div id="toast"><div class="big" id="toastBig"></div><div class="small" id="toastSmall"></div></div>
+
+<div id="card">
+  <div class="nm" id="cardName">—</div>
+  <div class="meta" id="cardMeta">—</div>
+  <div class="thought" id="cardThought">—</div>
+  <div id="cardBars"></div>
+</div>
+
+<div id="shop"></div>
+
+<div id="actions">
+  <button class="abtn" id="btnFeed"><span class="e">🍓</span><span class="t">Feed</span></button>
+  <button class="abtn" id="btnWater"><span class="e">💧</span><span class="t">Water</span></button>
+  <button class="abtn" id="btnPlay"><span class="e">🎾</span><span class="t">Play</span></button>
+  <button class="abtn" id="btnClean"><span class="e">🧹</span><span class="t">Clean</span></button>
+  <button class="abtn" id="btnHeal"><span class="e">💊</span><span class="t">Heal</span></button>
+  <button class="abtn" id="btnSleep"><span class="e">🌙</span><span class="t">Night</span></button>
+</div>
+
+<div id="intro">
+  <div id="introCard">
+    <div class="over">A small responsibility</div>
+    <h1>Litt<b>lings</b></h1>
+    <p class="poem">
+      Inside this tank live little beings. They are not a game<br>
+      so much as a <em>commitment</em>: they get hungry, thirsty,<br>
+      sleepy, lonely, sick. They multiply when they're happy.<br>
+      They remember you. <em>They need you.</em>
+    </p>
+    <button id="enterBtn">Meet them</button>
+    <p class="foot">Designed and built by Muse, an AI — one self-contained file.<br>Your colony lives in this browser and waits for you between visits.<br>Inspired by a certain television episode. You know the one.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   LITTLINGS — they need you.
+   A persistent caretaker colony. Each littling has needs (hunger,
+   thirst, energy, fun, health), a personality, a name, and a life
+   that continues in this browser between visits. Feed them, water
+   them, play with them, clean up after them, heal them — and they
+   will thrive, multiply, and fill the tank. Neglect them, and the
+   tank will empty. Original code and art, written from scratch.
+   ===================================================================== */
+
+/* ---------------- RNG ---------------- */
+let _s = (Math.random() * 1e9) | 0;
+function srand(seed){ _s = seed >>> 0 || 1; }
+function rnd(){ _s |= 0; _s = _s + 0x6D2B79F5 | 0; let t = Math.imul(_s ^ _s >>> 15, 1 | _s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+function rr(a, b){ return a + rnd() * (b - a); }
+function clamp(x, a, b){ return x < a ? a : x > b ? b : x; }
+function pickOf(arr){ return arr[(rnd() * arr.length) | 0]; }
+
+const NAME_A = ['Pip','Mo','Tib','Nu','Wren','Sol','Bee','Otto','Lu','Fen','Ivy','Nox','Pell','Uma','Roo','Zed','Mab','Tove','Ash','Pim'];
+const NAME_B = ['let','kin','dle','bo','wick','sy','moth','per','line','den','fa','lo','ney','bit','ra','wen'];
+function makeName(){ return pickOf(NAME_A) + pickOf(NAME_B); }
+
+/* ---------------- State ---------------- */
+const SAVE_KEY = 'littlings-v1';
+const DT = 1 / 60;
+let W = 0, H = 0, DPR = 1;
+let creatures = [], pellets = [], poops = [], hearts = [], stars = [], ball = null;
+let carePoints = 0, bornCount = 0, lostCount = 0, elapsed = 0;
+let night = false, selected = null, started = false;
+let upgrades = {feeder: false, sprinkler: false, tank: false, nests: false};
+const SHOP = [
+  {id: 'feeder', name: 'Auto-feeder', desc: 'drops food when the tank runs low', cost: 80, e: '🤖'},
+  {id: 'sprinkler', name: 'Sprinkler', desc: 'they get thirsty much slower', cost: 120, e: '🌦️'},
+  {id: 'nests', name: 'Comfy nests', desc: 'naps restore energy faster', cost: 120, e: '🛏️'},
+  {id: 'tank', name: 'Bigger tank', desc: 'room for many more littlings', cost: 200, e: '🏡'}
+];
+function popCap(){ return upgrades.tank ? 64 : 44; }
+function groundTop(){ return H * 0.70; }
+function groundBot(){ return H * 0.965; }
+function pondRect(){ return {x: W * 0.80, y: H * 0.80, w: W * 0.17, h: H * 0.13}; }
+
+let nextId = 1;
+function makeCreature(x, y, opts){
+  opts = opts || {};
+  const hue = opts.hue !== undefined ? opts.hue : rr(0, 360);
+  return {
+    id: nextId++, name: opts.name || makeName(),
+    x, y, vx: 0, vy: 0, hue,
+    app: opts.app || rr(0.8, 1.3),          // appetite multiplier
+    eng: opts.eng || rr(0.8, 1.25),         // energy burn multiplier
+    soc: opts.soc || rr(0.7, 1.4),          // sociability
+    age: opts.age || 0,
+    scale: opts.scale || 0.55,
+    hunger: opts.hunger !== undefined ? opts.hunger : rr(62, 85),
+    thirst: opts.thirst !== undefined ? opts.thirst : rr(62, 85),
+    energy: opts.energy !== undefined ? opts.energy : rr(65, 90),
+    fun: opts.fun !== undefined ? opts.fun : rr(55, 85),
+    health: opts.health !== undefined ? opts.health : 100,
+    state: 'wander', tx: x, ty: y, decideT: rr(0, 0.4),
+    nap: false, mateT: 0, breedCD: rr(20, 50), sick: false,
+    blink: rr(1, 4), happyPulse: 0, petCD: 0, poopT: rr(25, 60), sipT: 0
+  };
+}
+function need(c, k){ return c[k]; }
+function worstNeed(c){
+  const list = [['hunger', c.hunger], ['thirst', c.thirst], ['energy', c.energy], ['fun', c.fun]];
+  list.sort((a, b) => a[1] - b[1]);
+  return list[0];
+}
+function inTrouble(c){ return c.health < 55 || c.hunger < 18 || c.thirst < 18 || c.energy < 10; }
+function thought(c){
+  if (c.health < 45) return 'Feels yucky… please help.';
+  if (c.hunger < 30) return 'So hungry…';
+  if (c.thirst < 30) return 'Parched…';
+  if (c.energy < 25) return 'So sleepy…';
+  if (c.fun < 30) return 'Wants to play!';
+  if (c.nap) return 'Dreaming of snacks…';
+  return pickOf(['Loves it here.', 'You take good care of us.', 'Best day ever.', 'Feeling loved.', 'What a cozy tank.', 'Happy happy happy.']);
+}
+
+/* ---------------- Actions (the caretaking) ---------------- */
+function addCare(n){ carePoints += n; }
+function doFeed(x, y){
+  const n = 8;
+  for (let i = 0; i < n; i++) {
+    if (pellets.length > 70) break;
+    pellets.push({x: x !== undefined ? x + rr(-26, 26) : rr(W * 0.06, W * 0.94),
+                  y: y !== undefined ? y + rr(-8, 8) : rr(groundTop() + 26, groundBot() - 8),
+                  ph: rr(0, 6.28)});
+  }
+}
+function doWater(){
+  for (const c of creatures) { c.thirst = clamp(c.thirst + 26, 0, 100); c.fun = clamp(c.fun + 4, 0, 100); }
+  rainT = 1.2;
+  addCare(1);
+}
+function doPlay(){
+  ball = {x: rr(W * 0.2, W * 0.8), y: groundTop() - 30, vx: rr(-60, 60), vy: -160, r: 11};
+}
+function doClean(){
+  const n = poops.length;
+  poops = [];
+  if (n > 0) { addCare(Math.min(6, n)); showToast('All clean', 'The tank sparkles. They notice.'); }
+}
+function doHeal(){
+  let healed = 0;
+  for (const c of creatures) if (c.health < 70) { c.health = clamp(c.health + 42, 0, 100); healed++; sparkle(c); }
+  if (healed) { addCare(2); showToast('Medicine given', healed + (healed === 1 ? ' littling feels' : ' littlings feel') + ' better already.'); }
+}
+function pet(c){
+  if (c.petCD > 0) return;
+  c.petCD = 0.8;
+  c.fun = clamp(c.fun + 22, 0, 100);
+  c.happyPulse = 1;
+  burstHearts(c.x, c.y - 18, 3);
+  addCare(1);
+}
+function burstHearts(x, y, n){ for (let i = 0; i < n; i++) hearts.push({x: x + rr(-8, 8), y, vy: rr(-26, -16), life: rr(0.7, 1.2), t: 0}); }
+function sparkle(c){ burstHearts(c.x, c.y - 10, 2); }
+
+/* ---------------- Simulation ---------------- */
+let rainT = 0, feederT = 8, birthCD = 0;
+function step(){
+  elapsed += DT;
+  if (rainT > 0) rainT -= DT;
+  if (birthCD > 0) birthCD -= DT;
+  // ambient systems
+  if (upgrades.feeder) { feederT -= DT; if (feederT <= 0) { feederT = 12; if (pellets.length < 4) doFeed(); } }
+  // ball physics
+  if (ball) {
+    ball.vy += 620 * DT; ball.x += ball.vx * DT; ball.y += ball.vy * DT;
+    const gy = groundBot() - 26;
+    if (ball.y > gy) { ball.y = gy; ball.vy *= -0.55; ball.vx *= 0.86; if (Math.abs(ball.vy) < 30) ball.vy = 0; }
+    if (ball.x < 14 || ball.x > W - 14) ball.vx *= -0.8;
+    ball.x = clamp(ball.x, 14, W - 14);
+  }
+  const pond = pondRect();
+  for (let i = creatures.length - 1; i >= 0; i--) {
+    const c = creatures[i];
+    c.age += DT;
+    c.scale = clamp(0.55 + c.age / 130 * 0.45, 0.55, 1);
+    if (c.blink > 0) c.blink -= DT; if (c.blink < -0.12) c.blink = rr(1.6, 4.5);
+    if (c.happyPulse > 0) c.happyPulse -= DT * 1.4;
+    if (c.petCD > 0) c.petCD -= DT;
+    if (c.breedCD > 0) c.breedCD -= DT;
+    // --- needs decay ---
+    const thirstRate = 0.30 * (upgrades.sprinkler ? 0.55 : 1);
+    if (!c.nap) {
+      c.hunger = clamp(c.hunger - 0.27 * c.app * DT, 0, 100);
+      c.thirst = clamp(c.thirst - thirstRate * DT, 0, 100);
+      c.energy = clamp(c.energy - 0.15 * c.eng * DT * (night ? 1.25 : 1), 0, 100);
+      c.fun = clamp(c.fun - 0.20 * DT, 0, 100);
+    } else {
+      c.hunger = clamp(c.hunger - 0.10 * c.app * DT, 0, 100);
+      c.thirst = clamp(c.thirst - thirstRate * 0.5 * DT, 0, 100);
+      c.energy = clamp(c.energy + (night ? 3.4 : 2.3) * (upgrades.nests ? 1.6 : 1) * DT, 0, 100);
+      if (c.energy > 88) c.nap = false;
+    }
+    // --- health ---
+    const starving = (c.hunger <= 0 || c.thirst <= 0 || c.energy <= 0) ? 1 : 0;
+    const messy = poops.length > 7 ? 1 : 0;
+    if (starving) c.health = clamp(c.health - 0.55 * DT, 0, 100);
+    else if (messy) c.health = clamp(c.health - 0.13 * DT, 0, 100);
+    else if (c.hunger > 30 && c.thirst > 30 && c.energy > 20) c.health = clamp(c.health + 0.32 * DT, 0, 100);
+    c.sick = c.health < 45;
+    if (c.health <= 0) {
+      creatures.splice(i, 1);
+      lostCount++;
+      stars.push({x: c.x, y: c.y - 10, vy: -22, t: 0, life: 2.4, name: c.name});
+      if (selected === c) selected = null;
+      showToast(c.name + ' has faded', 'A little star rises. The others gather round.', 2600);
+      if (creatures.length < 3) hatchling();
+      continue;
+    }
+    // --- decide what to do ---
+    c.decideT -= DT;
+    if (c.decideT <= 0) {
+      c.decideT = 0.35;
+      decide(c, pond);
+    }
+    // --- move toward target ---
+    const dx = c.tx - c.x, dy = c.ty - c.y;
+    const dist = Math.hypot(dx, dy);
+    const speed = (c.sick ? 15 : 30) * (0.7 + c.scale * 0.4);
+    if (dist > 4 && !c.nap) {
+      c.vx = dx / (dist + 1e-4) * speed; c.vy = dy / (dist + 1e-4) * speed * 0.6;
+    } else { c.vx *= 0.7; c.vy *= 0.7; }
+    c.x = clamp(c.x + c.vx * DT, 16, W - 16);
+    c.y = clamp(c.y + c.vy * DT, groundTop() + 14, groundBot());
+    // --- interact at target ---
+    interact(c, pond);
+    // --- droppings (sorry) ---
+    c.poopT -= DT;
+    if (c.poopT <= 0) { c.poopT = rr(30, 75); if (poops.length < 40) poops.push({x: c.x + rr(-6, 6), y: c.y + 8}); }
+    // --- breeding: two happy adults, close, lingering ---
+    if (c.scale >= 0.98 && c.breedCD <= 0 && birthCD <= 0 && c.hunger > 55 && c.thirst > 50 && c.health > 70 && c.fun > 55 && creatures.length < popCap()) {
+      for (const o of creatures) {
+        if (o === c || o.scale < 0.98 || o.breedCD > 0) continue;
+        if (Math.hypot(o.x - c.x, o.y - c.y) < 30) {
+          c.mateT += DT;
+          if (c.mateT > 4) {
+            c.mateT = 0; c.breedCD = 240; o.breedCD = 240; birthCD = 45;
+            const baby = makeCreature((c.x + o.x) / 2, (c.y + o.y) / 2, {
+              hue: ((c.hue + o.hue) / 2 + rr(-16, 16) + 360) % 360,
+              app: clamp((c.app + o.app) / 2 + rr(-0.08, 0.08), 0.6, 1.5),
+              eng: clamp((c.eng + o.eng) / 2 + rr(-0.08, 0.08), 0.6, 1.45),
+              soc: clamp((c.soc + o.soc) / 2 + rr(-0.1, 0.1), 0.5, 1.6),
+              hunger: 80, thirst: 80, energy: 85, fun: 80
+            });
+            creatures.push(baby);
+            bornCount++;
+            burstHearts(baby.x, baby.y - 14, 5);
+            showToast(baby.name + ' is born!', 'The tank grows. So does the responsibility.', 2200);
+          }
+          break;
+        }
+      }
+    } else if (c.mateT > 0) c.mateT = Math.max(0, c.mateT - DT * 2);
+  }
+  // separation (gentle)
+  for (let a = 0; a < creatures.length; a++) for (let b = a + 1; b < creatures.length; b++) {
+    const A = creatures[a], B = creatures[b];
+    const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
+    if (d > 0.01 && d < 17) { const push = (17 - d) * 0.5; A.x -= dx / d * push * 0.4; B.x += dx / d * push * 0.4; }
+  }
+  // hearts & stars float
+  for (let i = hearts.length - 1; i >= 0; i--) { const h = hearts[i]; h.t += DT; h.y += h.vy * DT; if (h.t > h.life) hearts.splice(i, 1); }
+  for (let i = stars.length - 1; i >= 0; i--) { const s = stars[i]; s.t += DT; s.y += s.vy * DT; if (s.t > s.life) stars.splice(i, 1); }
+}
+function decide(c, pond){
+  if (c.energy < 20 && !c.nap) { c.nap = true; c.state = 'nap'; return; }
+  if (c.nap) { c.state = 'nap'; return; }
+  // hungriest first
+  if (c.hunger < 62 && pellets.length) {
+    let best = null, bd = 1e18;
+    for (const p of pellets) { const d = (p.x - c.x) ** 2 + (p.y - c.y) ** 2; if (d < bd) { bd = d; best = p; } }
+    if (best) { c.state = 'food'; c.tx = best.x; c.ty = best.y; c.target = best; return; }
+  }
+  if (c.thirst < 58) { c.state = 'water'; c.tx = pond.x + pond.w * 0.5 + rr(-14, 14); c.ty = pond.y + pond.h * 0.45; return; }
+  if (ball && c.fun < 72) { c.state = 'ball'; c.tx = ball.x; c.ty = ball.y + 16; return; }
+  if (c.fun < 45) {
+    // find a friend to be near
+    let best = null, bd = 1e18;
+    for (const o of creatures) { if (o === c) continue; const d = (o.x - c.x) ** 2 + (o.y - c.y) ** 2; if (d < bd) { bd = d; best = o; } }
+    if (best) { c.state = 'social'; c.tx = best.x + rr(-16, 16); c.ty = best.y + rr(-6, 6); return; }
+  }
+  c.state = 'wander';
+  if (Math.hypot(c.tx - c.x, c.ty - c.y) < 12 || rnd() < 0.3) {
+    c.tx = rr(W * 0.05, W * 0.95);
+    c.ty = rr(groundTop() + 30, groundBot() - 4);
+  }
+}
+function interact(c, pond){
+  if (c.state === 'food' && c.target) {
+    const p = c.target;
+    if (Math.hypot(p.x - c.x, p.y - c.y) < 15 && pellets.includes(p)) {
+      pellets.splice(pellets.indexOf(p), 1);
+      c.hunger = clamp(c.hunger + 34, 0, 100);
+      c.happyPulse = 0.7;
+      addCare(1);
+      c.target = null; c.decideT = 0;
+    }
+  }
+  if (c.state === 'water') {
+    if (c.x > pond.x - 6 && c.x < pond.x + pond.w + 6 && Math.abs(c.y - (pond.y + pond.h * 0.45)) < 20) {
+      c.thirst = clamp(c.thirst + 9 * DT * 6, 0, 100);
+      if (c.thirst > 96) { c.decideT = 0; addCare(1); }
+    }
+  }
+  if (c.state === 'ball' && ball) {
+    if (Math.hypot(ball.x - c.x, ball.y + 12 - c.y) < 20) {
+      c.fun = clamp(c.fun + 17, 0, 100);
+      c.happyPulse = 0.8;
+      ball.vx = rr(-140, 140); ball.vy = -rr(120, 240);
+      addCare(1);
+      c.decideT = 0.2;
+    }
+  }
+  if (c.state === 'social') c.fun = clamp(c.fun + 1.6 * c.soc * DT, 0, 100);
+}
+function hatchling(){
+  const b = makeCreature(rr(W * 0.3, W * 0.7), rr(groundTop() + 40, groundBot() - 10), {hunger: 78, thirst: 78, energy: 85, fun: 75});
+  creatures.push(b);
+  bornCount++;
+  showToast('A new egg hatches', b.name + ' arrives, small and hopeful.', 2200);
+}
+
+/* ---------------- Persistence ---------------- */
+let awaySec = 0;
+function saveGame(){
+  try {
+    const data = {v: 1, t: Date.now(), points: carePoints, born: bornCount, lost: lostCount, upgrades,
+      creatures: creatures.map(c => ({name: c.name, hue: c.hue, app: c.app, eng: c.eng, soc: c.soc, age: c.age,
+        hunger: c.hunger, thirst: c.thirst, energy: c.energy, fun: c.fun, health: c.health,
+        xr: W ? c.x / W : 0.5, yr: (c.y - groundTop()) / Math.max(1, groundBot() - groundTop())}))};
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) {}
+}
+function loadGame(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d || d.v !== 1 || !Array.isArray(d.creatures) || !d.creatures.length) return false;
+    carePoints = d.points || 0; bornCount = d.born || 0; lostCount = d.lost || 0;
+    Object.assign(upgrades, d.upgrades || {});
+    creatures = d.creatures.map(s => makeCreature(
+      clamp(s.xr || 0.5, 0.03, 0.97) * W,
+      groundTop() + clamp(s.yr || 0.6, 0.1, 1) * (groundBot() - groundTop()), s));
+    awaySec = clamp((Date.now() - (d.t || Date.now())) / 1000, 0, 8 * 3600);
+    if (awaySec > 90) {
+      // they waited for you: hungrier, thirstier, lonelier — but absence alone never kills
+      const simAway = Math.min(awaySec * 0.15, 1200);
+      for (const c of creatures) {
+        c.hunger = clamp(c.hunger - 0.27 * c.app * simAway * 0.45, 12, 100);
+        c.thirst = clamp(c.thirst - 0.30 * simAway * 0.45, 12, 100);
+        c.fun = clamp(c.fun - 0.20 * simAway * 0.6, 15, 100);
+        c.energy = clamp(c.energy + 30, 0, 100);
+      }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------------- Rendering ---------------- */
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  for (const c of creatures) { c.x = clamp(c.x, 16, W - 16); c.y = clamp(c.y, groundTop() + 14, groundBot()); }
+}
+window.addEventListener('resize', resize);
+const speckles = [], starDots = [], tufts = [];
+for (let i = 0; i < 130; i++) speckles.push({x: Math.random(), y: Math.random(), r: Math.random() * 2 + 0.6});
+for (let i = 0; i < 90; i++) starDots.push({x: Math.random(), y: Math.random() * 0.55, r: Math.random() * 1.3 + 0.4, ph: Math.random() * 6.28});
+for (let i = 0; i < 16; i++) tufts.push({x: Math.random(), h: 8 + Math.random() * 10});
+let nightF = 0;
+function draw(){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  nightF += ((night ? 1 : 0) - nightF) * 0.03;
+  const t = elapsed;
+  // sky
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  if (nightF < 0.5) { sky.addColorStop(0, '#2b3a4a'); sky.addColorStop(0.7, '#4a4238'); sky.addColorStop(1, '#3a2f24'); }
+  else { sky.addColorStop(0, '#0a1026'); sky.addColorStop(0.7, '#141a30'); sky.addColorStop(1, '#1a1626'); }
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // stars / moon at night
+  if (nightF > 0.05) {
+    ctx.fillStyle = '#fff';
+    for (const s of starDots) { ctx.globalAlpha = nightF * (0.3 + 0.5 * (0.5 + 0.5 * Math.sin(t * 0.8 + s.ph))); ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = nightF;
+    ctx.fillStyle = '#f5efdb';
+    ctx.beginPath(); ctx.arc(W * 0.86, H * 0.13, 17, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(10,16,38,1)';
+    ctx.beginPath(); ctx.arc(W * 0.86 - 7, H * 0.13 - 4, 14, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // warm glow lamp (day)
+  if (nightF < 0.95) {
+    const lg = ctx.createRadialGradient(W * 0.16, H * 0.1, 0, W * 0.16, H * 0.1, W * 0.5);
+    lg.addColorStop(0, 'rgba(255,190,110,' + (0.20 * (1 - nightF)) + ')');
+    lg.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  }
+  // soil
+  const gt = groundTop();
+  const soil = ctx.createLinearGradient(0, gt, 0, H);
+  soil.addColorStop(0, '#5d4630'); soil.addColorStop(0.12, '#4c3823'); soil.addColorStop(1, '#2e2115');
+  ctx.fillStyle = soil; ctx.fillRect(0, gt, W, H - gt);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  for (const s of speckles) ctx.fillRect(s.x * W, gt + s.y * (H - gt), s.r, s.r);
+  // grass tufts along the top of the soil
+  ctx.strokeStyle = 'rgba(140,190,110,.55)'; ctx.lineWidth = 1.6;
+  for (const tf of tufts) {
+    const x = tf.x * W;
+    ctx.beginPath();
+    ctx.moveTo(x, gt + 2); ctx.quadraticCurveTo(x - 3, gt - tf.h, x - 5, gt - tf.h - 2);
+    ctx.moveTo(x, gt + 2); ctx.quadraticCurveTo(x + 1, gt - tf.h - 2, x + 2, gt - tf.h - 3);
+    ctx.moveTo(x, gt + 2); ctx.quadraticCurveTo(x + 4, gt - tf.h, x + 6, gt - tf.h - 1);
+    ctx.stroke();
+  }
+  // nests (left): soft mounds
+  ctx.fillStyle = 'rgba(214,178,120,.20)';
+  for (let i = 0; i < 3; i++) {
+    const nx = W * (0.07 + i * 0.085), ny = groundBot() - 4;
+    ctx.beginPath(); ctx.ellipse(nx, ny, 30, 9, 0, 0, 7); ctx.fill();
+  }
+  // pond (right)
+  const pond = pondRect();
+  const pg = ctx.createRadialGradient(pond.x + pond.w / 2, pond.y + pond.h / 2, 4, pond.x + pond.w / 2, pond.y + pond.h / 2, pond.w / 2);
+  pg.addColorStop(0, 'rgba(120,200,235,.85)'); pg.addColorStop(1, 'rgba(52,120,170,.85)');
+  ctx.fillStyle = pg;
+  ctx.beginPath(); ctx.ellipse(pond.x + pond.w / 2, pond.y + pond.h / 2, pond.w / 2, pond.h / 2, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.ellipse(pond.x + pond.w / 2, pond.y + pond.h / 2, pond.w / 2 - 3, pond.h / 2 - 2, 0, 0, 7); ctx.stroke();
+  // pellets
+  for (const p of pellets) {
+    ctx.fillStyle = '#ff7d6b';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4.6, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.beginPath(); ctx.arc(p.x - 1.4, p.y - 1.4, 1.5, 0, 7); ctx.fill();
+  }
+  // droppings
+  ctx.fillStyle = '#3d2b18';
+  for (const p of poops) { ctx.beginPath(); ctx.ellipse(p.x, p.y, 5.4, 3.4, 0, 0, 7); ctx.fill(); }
+  // ball
+  if (ball) {
+    ctx.fillStyle = '#b7e26b';
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r - 2.4, 0.6, 2.4); ctx.stroke();
+  }
+  // creatures (back to front)
+  const sorted = [...creatures].sort((a, b) => a.y - b.y);
+  for (const c of sorted) drawCreature(c);
+  // hearts + stars
+  ctx.textAlign = 'center';
+  for (const h of hearts) {
+    ctx.globalAlpha = 1 - h.t / h.life;
+    ctx.fillStyle = '#ff8fab';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('♥', h.x, h.y);
+  }
+  for (const s of stars) {
+    ctx.globalAlpha = 1 - s.t / s.life;
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '15px sans-serif';
+    ctx.fillText('✦', s.x, s.y);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#e8e1d2';
+    ctx.fillText(s.name, s.x, s.y + 13);
+  }
+  ctx.globalAlpha = 1;
+  // rain (watering)
+  if (rainT > 0) {
+    ctx.strokeStyle = 'rgba(160,215,250,.5)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 60; i++) {
+      const x = (i * 97.3 + t * 340) % W, y = (i * 61.7 + t * 520) % (H * 0.8);
+      ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 13);
+    }
+    ctx.stroke();
+  }
+  // night wash
+  if (nightF > 0.02) { ctx.fillStyle = 'rgba(8,10,34,' + (0.26 * nightF) + ')'; ctx.fillRect(0, 0, W, H); }
+  // glass vignette
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.8);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+function drawCreature(c){
+  const s = c.scale;
+  const squash = c.nap ? 1.16 : 1 + Math.sin(elapsed * 3 + c.id) * 0.02;
+  const rx = 14 * s * squash, ry = 12 * s * (c.nap ? 0.78 : 1);
+  const bob = c.nap ? 0 : Math.abs(Math.sin(elapsed * 7 + c.id * 2)) * (Math.hypot(c.vx, c.vy) > 4 ? 1.6 : 0.4);
+  const x = c.x, y = c.y - bob;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  ctx.beginPath(); ctx.ellipse(c.x, c.y + 9 * s, rx * 0.9, 3.4, 0, 0, 7); ctx.fill();
+  // feet
+  if (!c.nap) {
+    ctx.fillStyle = 'hsl(' + c.hue + ',55%,38%)';
+    const stepPh = Math.sin(elapsed * 9 + c.id * 3) * (Math.hypot(c.vx, c.vy) > 4 ? 3 : 0.6);
+    ctx.beginPath(); ctx.ellipse(x - 6 * s + stepPh, c.y + 7 * s, 4.4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 6 * s - stepPh, c.y + 7 * s, 4.4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
+  }
+  // body
+  const grad = ctx.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 1, x, y, rx * 1.25);
+  grad.addColorStop(0, 'hsl(' + c.hue + ',82%,' + (c.sick ? 58 : 72) + '%)');
+  grad.addColorStop(1, 'hsl(' + c.hue + ',62%,' + (c.sick ? 40 : 50) + '%)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill();
+  if (c.sick) { ctx.fillStyle = 'rgba(110,180,90,.25)'; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); }
+  // blush
+  ctx.fillStyle = 'rgba(255,130,150,.4)';
+  ctx.beginPath(); ctx.ellipse(x - rx * 0.52, y + ry * 0.18, 3 * s, 2 * s, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + rx * 0.52, y + ry * 0.18, 3 * s, 2 * s, 0, 0, 7); ctx.fill();
+  // eyes
+  const ey = y - ry * 0.18, ex = rx * 0.36;
+  ctx.strokeStyle = 'rgba(30,22,16,.9)'; ctx.lineWidth = 1.7; ctx.lineCap = 'round';
+  if (c.nap || c.blink < 0) {
+    ctx.beginPath(); ctx.moveTo(x - ex - 3 * s, ey); ctx.lineTo(x - ex + 3 * s, ey); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + ex - 3 * s, ey); ctx.lineTo(x + ex + 3 * s, ey); ctx.stroke();
+  } else if (c.happyPulse > 0.25) {
+    ctx.beginPath(); ctx.arc(x - ex, ey + 1, 3.2 * s, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + ex, ey + 1, 3.2 * s, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  } else {
+    ctx.fillStyle = 'rgba(30,22,16,.92)';
+    ctx.beginPath(); ctx.arc(x - ex, ey, 2.3 * s, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + ex, ey, 2.3 * s, 0, 7); ctx.fill();
+  }
+  // mouth
+  ctx.strokeStyle = 'rgba(30,22,16,.75)'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (inTrouble(c)) ctx.arc(x, y + ry * 0.52, 3 * s, Math.PI * 1.15, Math.PI * 1.85);
+  else if (c.hunger < 40) { ctx.moveTo(x - 2.4 * s, y + ry * 0.34); ctx.lineTo(x + 2.4 * s, y + ry * 0.34); }
+  else ctx.arc(x, y + ry * 0.16, 3.6 * s, Math.PI * 0.15, Math.PI * 0.85);
+  ctx.stroke();
+  // nap zzz
+  if (c.nap) {
+    ctx.fillStyle = 'rgba(230,235,255,.85)';
+    ctx.font = 'bold ' + (10 + Math.sin(elapsed * 2 + c.id) * 1.5) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('z', x + rx + 6 + Math.sin(elapsed * 1.4 + c.id) * 2, y - ry - 4 - (elapsed * 4 + c.id * 7) % 8);
+  }
+  // need bubble
+  const w = worstNeed(c);
+  if (c.sick || w[1] < 25) {
+    const icon = c.sick ? '💊' : w[0] === 'hunger' ? '🍓' : w[0] === 'thirst' ? '💧' : w[0] === 'energy' ? '💤' : '🎾';
+    const bx = x, by = y - ry - 15 + Math.sin(elapsed * 2.4 + c.id) * 1.6;
+    ctx.fillStyle = 'rgba(255,252,246,.94)';
+    ctx.beginPath(); ctx.arc(bx, by, 8.6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx - 3, by + 7.4); ctx.lineTo(bx + 3, by + 7.4); ctx.lineTo(bx, by + 12); ctx.closePath(); ctx.fill();
+    ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(icon, bx, by + 3.4);
+  }
+  // selection ring + name
+  if (c === selected) {
+    ctx.strokeStyle = 'rgba(255,179,92,.9)';
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y, rx + 7 + Math.sin(elapsed * 3) * 1.2, 0, 7); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffd9a3';
+    ctx.font = 'bold 11.5px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(c.name, x, y - ry - 24);
+  }
+}
+
+/* ---------------- HUD / card / shop ---------------- */
+const el = id => document.getElementById(id);
+let toastTimer = null;
+function showToast(big, small, ms){
+  el('toastBig').textContent = big;
+  el('toastSmall').textContent = small || '';
+  el('toast').style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el('toast').style.opacity = 0, ms || 1900);
+}
+function personality(c){
+  if (c.soc >= 1.2) return 'a social butterfly';
+  if (c.app >= 1.15) return 'always peckish';
+  if (c.eng >= 1.15) return 'a little live wire';
+  if (c.eng <= 0.92) return 'easygoing';
+  return 'a gentle soul';
+}
+function fmtAge(sec){
+  if (sec < 90) return sec.toFixed(0) + 's old';
+  if (sec < 3600) return (sec / 60).toFixed(0) + ' min old';
+  return (sec / 3600).toFixed(1) + ' h old';
+}
+const BAR_DEFS = [
+  ['hunger', '🍓', '#ff9d6b'], ['thirst', '💧', '#6bc4ff'], ['energy', '⚡', '#ffd166'],
+  ['fun', '🎾', '#b7e26b'], ['health', '💗', '#ff8fab']
+];
+function refreshCard(){
+  if (!selected || !creatures.includes(selected)) { el('card').style.display = 'none'; return; }
+  const c = selected;
+  el('card').style.display = 'block';
+  el('cardName').innerHTML = '<span style="color:hsl(' + c.hue + ',80%,68%)">●</span> ' + c.name;
+  el('cardMeta').textContent = fmtAge(c.age) + ' · ' + personality(c) + (c.sick ? ' · sick' : '');
+  el('cardThought').textContent = '“' + thought(c) + '”';
+  el('cardBars').innerHTML = BAR_DEFS.map(([k, ic, col]) =>
+    '<div class="bar"><span class="ic">' + ic + '</span><div class="tr"><div class="fl" style="width:' +
+    clamp(c[k], 0, 100) + '%;background:' + col + '"></div></div><span>' + Math.round(c[k]) + '</span></div>').join('');
+}
+function renderShop(){
+  el('shop').innerHTML = SHOP.map(it => {
+    const owned = upgrades[it.id];
+    return '<div class="shopItem' + (owned ? ' owned' : '') + '" data-id="' + it.id + '">' +
+      '<span>' + it.e + ' <span class="nm2">' + it.name + '</span><br><span class="ds">' + it.desc + '</span></span>' +
+      '<span class="cost">' + (owned ? '✓' : it.cost + ' ♥') + '</span></div>';
+  }).join('');
+  for (const node of el('shop').children) {
+    node.addEventListener('click', () => {
+      const it = SHOP.find(s => s.id === node.dataset.id);
+      if (!it || upgrades[it.id]) return;
+      if (carePoints < it.cost) { showToast('Not enough care ♥ yet', 'Keep looking after them — helping earns care.'); return; }
+      carePoints -= it.cost;
+      upgrades[it.id] = true;
+      renderShop();
+      showToast(it.name + ' installed', it.desc.charAt(0).toUpperCase() + it.desc.slice(1) + '. They approve.');
+      saveGame();
+    });
+  }
+}
+let hudTimer = 0;
+function updateHUD(){
+  el('stPop').textContent = creatures.length;
+  el('stCare').textContent = carePoints;
+  el('stBorn').textContent = bornCount;
+  el('stLost').textContent = lostCount;
+  let trouble = 0, anySick = false, anyHungry = false;
+  for (const c of creatures) { if (inTrouble(c)) trouble++; if (c.sick) anySick = true; if (c.hunger < 20) anyHungry = true; }
+  const stT = el('stTrouble');
+  stT.textContent = trouble;
+  stT.classList.toggle('warn', trouble > 0);
+  el('btnHeal').classList.toggle('alert', anySick);
+  el('btnFeed').classList.toggle('alert', anyHungry);
+}
+
+/* ---------------- Interaction ---------------- */
+const SPEEDS = [1, 2, 4, 8];
+let speedIdx = 0, speedMul = 1;
+el('btnFeed').addEventListener('click', () => doFeed());
+el('btnWater').addEventListener('click', doWater);
+el('btnPlay').addEventListener('click', doPlay);
+el('btnClean').addEventListener('click', doClean);
+el('btnHeal').addEventListener('click', doHeal);
+el('btnSleep').addEventListener('click', e => { night = !night; el('btnSleep').classList.toggle('on', night); });
+el('speedBtn').addEventListener('click', cycleSpeed);
+el('enterBtn').addEventListener('click', () => {
+  el('intro').classList.add('hidden');
+  started = true;
+  if (awaySec > 90) showToast('Welcome back', 'You were gone ' + fmtAge(awaySec) + '. They waited — hungry, thirsty, and missing you.', 3200);
+  else if (freshColony) showToast('Three littlings have hatched', 'Keep them fed, watered, rested and loved. Tap one to say hello.', 3000);
+  saveGame();
+});
+function cycleSpeed(){
+  speedIdx = (speedIdx + 1) % SPEEDS.length;
+  speedMul = SPEEDS[speedIdx];
+  el('speedBtn').textContent = 'Time ×' + speedMul;
+}
+canvas.addEventListener('pointerdown', e => {
+  // topmost creature near the tap?
+  let hit = null;
+  for (const c of creatures) if (Math.hypot(c.x - e.clientX, c.y - e.clientY) < 24) hit = c;
+  if (hit) { selected = hit; pet(hit); refreshCard(); }
+  else if (e.clientY > groundTop()) doFeed(e.clientX, e.clientY);
+});
+window.addEventListener('keydown', e => { if (e.code === 'KeyF') cycleSpeed(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+window.addEventListener('pagehide', saveGame);
+
+/* ---------------- Boot + main loop ---------------- */
+let freshColony = false;
+resize();
+if (!loadGame()) {
+  freshColony = true;
+  srand((Math.random() * 1e9) | 0);
+  for (let i = 0; i < 3; i++)
+    creatures.push(makeCreature(rr(W * 0.25, W * 0.7), rr(groundTop() + 50, groundBot() - 12), {}));
+  bornCount = 3;
+}
+renderShop();
+updateHUD();
+let last = performance.now(), acc = 0, saveTimer = 6;
+function frame(now){
+  requestAnimationFrame(frame);
+  let dt = Math.min(0.06, (now - last) / 1000); last = now;
+  if (started) {
+    acc += dt * speedMul;
+    const t0 = performance.now();
+    let steps = 0;
+    while (acc > DT && steps < 700) {
+      step(); acc -= DT; steps++;
+      if (steps % 10 === 0 && performance.now() - t0 > 13) break;
+    }
+    if (acc > 3) acc = 3;
+    saveTimer -= dt;
+    if (saveTimer <= 0) { saveGame(); saveTimer = 6; }
+  } else {
+    elapsed += dt;   // let the tank idle behind the intro
+  }
+  draw();
+  hudTimer -= dt;
+  if (hudTimer <= 0) { updateHUD(); refreshCard(); hudTimer = 0.25; }
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
